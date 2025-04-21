@@ -1,2 +1,6 @@
 /kadena-agent/node_modules
 kadena-agent/.env
+/kadena-api/node_modules
+kadena-api/yarn.lock
+/marmalade-examples
+/ecko-dex-ui
