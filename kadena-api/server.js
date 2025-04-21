@@ -2,13 +2,21 @@ const express = require("express");
 const cors = require("cors");
 const { Pact, createClient } = require("@kadena/client");
 const BigNumber = require("bignumber.js"); // Import BigNumber
-const rateLimit = require("express-rate-limit");
-const helmet = require("helmet");
-const morgan = require("morgan");
-const dotenv = require("dotenv");
 
-// Load environment variables from .env file
-dotenv.config();
+// Safely import optional dependencies
+let rateLimit, helmet, morgan, dotenv;
+try {
+  rateLimit = require("express-rate-limit");
+  helmet = require("helmet");
+  morgan = require("morgan");
+  dotenv = require("dotenv");
+  // Load environment variables from .env file if dotenv is available
+  dotenv?.config();
+} catch (err) {
+  console.warn(
+    "Optional dependencies not available. Running in compatibility mode."
+  );
+}
 
 // --- Configuration ---
 // Read from environment variables with fallbacks
@@ -43,27 +51,34 @@ if (!pactLang || !pactLang.mkCap) {
 
 const app = express();
 
-// --- Rate Limiting ---
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  message: {
-    error: "Too many requests, please try again later.",
-    details: "Rate limit exceeded",
-  },
-});
-
 // --- Middleware ---
+// Only use production middleware if packages are available
+if (rateLimit) {
+  // --- Rate Limiting ---
+  const apiLimiter = rateLimit({
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // Limit each IP to 100 requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    message: {
+      error: "Too many requests, please try again later.",
+      details: "Rate limit exceeded",
+    },
+  });
+
+  // Apply rate limiting to all requests
+  app.use(apiLimiter);
+}
+
 // Security headers
-app.use(helmet());
+if (helmet) {
+  app.use(helmet());
+}
 
 // Request logging
-app.use(morgan(NODE_ENV === "production" ? "combined" : "dev"));
-
-// Apply rate limiting to all requests
-app.use(apiLimiter);
+if (morgan) {
+  app.use(morgan(NODE_ENV === "production" ? "combined" : "dev"));
+}
 
 app.use(cors()); // Allow requests from frontend origins
 app.use(express.json()); // Parse JSON request bodies
