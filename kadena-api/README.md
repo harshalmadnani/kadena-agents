@@ -250,6 +250,54 @@ Creates an unsigned transaction for creating a new NFT collection.
 }
 ```
 
+### Transfer Endpoint
+
+The `/transfer` endpoint generates unsigned transaction data for token transfers between accounts.
+
+### Request
+
+```http
+POST /transfer
+Content-Type: application/json
+
+{
+  "tokenAddress": "coin", // or fungible token address
+  "sender": "k:account", // sender's account
+  "receiver": "k:account", // receiver's account
+  "amount": "10.0", // amount to transfer
+  "chainId": "2", // chain ID
+  "meta": {}, // optional metadata
+  "gasLimit": 2500, // optional gas limit
+  "gasPrice": 0.00000001, // optional gas price
+  "ttl": 600 // optional time-to-live in seconds
+}
+```
+
+### Response
+
+```json
+{
+  "transaction": {
+    "cmd": "...",
+    "hash": "...",
+    "sigs": []
+  },
+  "metadata": {
+    "sender": "k:account",
+    "receiver": "k:account",
+    "amount": 10.0,
+    "tokenAddress": "coin",
+    "chainId": "2",
+    "networkId": "mainnet01"
+  }
+}
+```
+
+### Error Responses
+
+- `400 Bad Request`: Missing required parameters or invalid amount
+- `500 Internal Server Error`: Failed to generate transfer transaction
+
 ## Error Handling
 
 All endpoints return appropriate HTTP status codes:

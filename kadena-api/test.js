@@ -319,4 +319,146 @@ describe("Kadena API Server Tests", () => {
         });
     });
   });
+
+  // --- /transfer Endpoint Tests ---
+  describe("POST /transfer", () => {
+    it("should handle native KDA transfer request", (done) => {
+      chai
+        .request(app)
+        .post("/transfer")
+        .send({
+          tokenAddress: "coin",
+          sender: SAMPLE_ACCOUNT,
+          receiver: SAMPLE_MINT_TO_ACCOUNT,
+          amount: "5.0",
+          chainId: SAMPLE_CHAIN_ID,
+        })
+        .end((err, res) => {
+          expect(res).to.have.status(200);
+          expect(res.body).to.be.an("object");
+          expect(res.body).to.have.property("transaction");
+          expect(res.body).to.have.property("metadata");
+
+          // Check metadata properties
+          const metadata = res.body.metadata;
+          expect(metadata).to.have.property("sender", SAMPLE_ACCOUNT);
+          expect(metadata).to.have.property("receiver", SAMPLE_MINT_TO_ACCOUNT);
+          expect(metadata).to.have.property("amount", 5.0);
+          expect(metadata).to.have.property("tokenAddress", "coin");
+          expect(metadata).to.have.property("chainId", SAMPLE_CHAIN_ID);
+
+          done();
+        });
+    });
+
+    it("should handle fungible token transfer request", (done) => {
+      chai
+        .request(app)
+        .post("/transfer")
+        .send({
+          tokenAddress: SAMPLE_TOKEN_OUT, // Using kaddex.kdx as sample token
+          sender: SAMPLE_ACCOUNT,
+          receiver: SAMPLE_MINT_TO_ACCOUNT,
+          amount: "10.0",
+          chainId: SAMPLE_CHAIN_ID,
+        })
+        .end((err, res) => {
+          expect(res).to.have.status(200);
+          expect(res.body).to.be.an("object");
+          expect(res.body).to.have.property("transaction");
+          expect(res.body).to.have.property("metadata");
+
+          // Check metadata properties
+          const metadata = res.body.metadata;
+          expect(metadata).to.have.property("sender", SAMPLE_ACCOUNT);
+          expect(metadata).to.have.property("receiver", SAMPLE_MINT_TO_ACCOUNT);
+          expect(metadata).to.have.property("amount", 10.0);
+          expect(metadata).to.have.property("tokenAddress", SAMPLE_TOKEN_OUT);
+          expect(metadata).to.have.property("chainId", SAMPLE_CHAIN_ID);
+
+          done();
+        });
+    });
+
+    it("should accept optional parameters", (done) => {
+      chai
+        .request(app)
+        .post("/transfer")
+        .send({
+          tokenAddress: "coin",
+          sender: SAMPLE_ACCOUNT,
+          receiver: SAMPLE_MINT_TO_ACCOUNT,
+          amount: "1.0",
+          chainId: SAMPLE_CHAIN_ID,
+          gasLimit: 3000,
+          gasPrice: 0.00000002,
+          ttl: 1200,
+          meta: { memo: "Test transfer" },
+        })
+        .end((err, res) => {
+          expect(res).to.have.status(200);
+          expect(res.body).to.be.an("object");
+          expect(res.body).to.have.property("transaction");
+          expect(res.body).to.have.property("metadata");
+          done();
+        });
+    });
+
+    it("should return 400 if required parameters are missing", (done) => {
+      chai
+        .request(app)
+        .post("/transfer")
+        .send({
+          tokenAddress: "coin",
+          sender: SAMPLE_ACCOUNT,
+          // receiver: SAMPLE_MINT_TO_ACCOUNT, // Missing receiver
+          amount: "5.0",
+          chainId: SAMPLE_CHAIN_ID,
+        })
+        .end((err, res) => {
+          expect(res).to.have.status(400);
+          expect(res.body).to.have.property("error");
+          expect(res.body.error).to.equal("Missing required parameters");
+          done();
+        });
+    });
+
+    it("should return 400 if amount is invalid", (done) => {
+      chai
+        .request(app)
+        .post("/transfer")
+        .send({
+          tokenAddress: "coin",
+          sender: SAMPLE_ACCOUNT,
+          receiver: SAMPLE_MINT_TO_ACCOUNT,
+          amount: "-5.0", // Negative amount
+          chainId: SAMPLE_CHAIN_ID,
+        })
+        .end((err, res) => {
+          expect(res).to.have.status(400);
+          expect(res.body).to.have.property("error");
+          expect(res.body.error).to.equal("Invalid amount");
+          done();
+        });
+    });
+
+    it("should return 400 if amount is not a number", (done) => {
+      chai
+        .request(app)
+        .post("/transfer")
+        .send({
+          tokenAddress: "coin",
+          sender: SAMPLE_ACCOUNT,
+          receiver: SAMPLE_MINT_TO_ACCOUNT,
+          amount: "not-a-number",
+          chainId: SAMPLE_CHAIN_ID,
+        })
+        .end((err, res) => {
+          expect(res).to.have.status(400);
+          expect(res.body).to.have.property("error");
+          expect(res.body.error).to.equal("Invalid amount");
+          done();
+        });
+    });
+  });
 });

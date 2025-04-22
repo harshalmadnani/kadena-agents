@@ -3,19 +3,15 @@ const cors = require("cors");
 const { Pact, createClient } = require("@kadena/client");
 const BigNumber = require("bignumber.js"); // Import BigNumber
 
-// Safely import optional dependencies
 let rateLimit, helmet, morgan, dotenv;
 try {
   rateLimit = require("express-rate-limit");
   helmet = require("helmet");
   morgan = require("morgan");
   dotenv = require("dotenv");
-  // Load environment variables from .env file if dotenv is available
   dotenv?.config();
 } catch (err) {
-  console.warn(
-    "Optional dependencies not available. Running in compatibility mode."
-  );
+  console.warn("Optional dependencies not available");
 }
 
 // --- Configuration ---
@@ -61,7 +57,7 @@ if (rateLimit) {
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
     message: {
-      error: "Too many requests, please try again later.",
+      error: "Too many requests",
       details: "Rate limit exceeded",
     },
   });
@@ -94,71 +90,47 @@ app.use((err, req, res, next) => {
 
 // --- Helper Functions ---
 
-const getClient = (chainId) => {
-  return createClient(
+const getClient = (chainId) =>
+  createClient(
     `${KADENA_API_HOST}/chainweb/${NETWORK_VERSION}/${KADENA_NETWORK_ID}/chain/${chainId}/pact`
   );
-};
 
-// Updated reduceBalance using bignumber.js
 const reduceBalance = (value, precision = 12) => {
-  if (value === undefined || value === null) return "0.0"; // Handle null/undefined input
+  if (value === undefined || value === null) return "0.0";
   try {
-    // Configure BigNumber for desired precision and rounding
     BigNumber.config({
       DECIMAL_PLACES: precision,
       ROUNDING_MODE: BigNumber.ROUND_DOWN,
     });
-    const bnValue = new BigNumber(value);
-    // Return the formatted string
-    return bnValue.toFixed(precision);
+    return new BigNumber(value).toFixed(precision);
   } catch (error) {
-    // Handle potential errors during BigNumber creation (e.g., invalid input)
-    console.error(`Error reducing balance for value: ${value}`, error);
-    return "0.0"; // Return a default value on error
+    console.error(`Error reducing balance: ${value}`, error);
+    return "0.0";
   }
 };
 
 const creationTime = () => Math.round(new Date().getTime() / 1000) - 10;
 
-// Generate token ID for NFT minting - based on Marmalade implementation
 const createTokenId = async (chainId, precision, guard, policy, uri) => {
   const pactClient = getClient(chainId);
+  let policyName =
+    policy === "DEFAULT_COLLECTION_NON_UPDATABLE"
+      ? "marmalade-v2.non-fungible-policy-v1"
+      : policy === "DEFAULT_COLLECTION_ROYALTY_NON_UPDATABLE"
+      ? "marmalade-v2.royalty-policy-v1"
+      : policy;
 
-  // Fix policy names - these must match exactly what's on-chain
-  let policyName;
-  if (policy === "DEFAULT_COLLECTION_NON_UPDATABLE") {
-    policyName = "marmalade-v2.non-fungible-policy-v1";
-  } else if (policy === "DEFAULT_COLLECTION_ROYALTY_NON_UPDATABLE") {
-    policyName = "marmalade-v2.royalty-policy-v1";
-  } else {
-    policyName = policy; // Use as-is if it's a direct module reference
-  }
-
-  const code = `(use marmalade-v2.ledger)
-    (use marmalade-v2.util-v1)
-    (create-token-id { 'precision: ${precision}, 'policies: [${policyName}], 'uri: "${uri}"} (read-keyset 'ks))`;
-
+  const code = `(use marmalade-v2.ledger)(use marmalade-v2.util-v1)(create-token-id { 'precision: ${precision}, 'policies: [${policyName}], 'uri: "${uri}"} (read-keyset 'ks))`;
   const tx = Pact.builder
     .execution(code)
-    .setMeta({
-      chainId: String(chainId),
-      gasLimit: 80000,
-      gasPrice: 0.0000001,
-    })
+    .setMeta({ chainId: String(chainId), gasLimit: 80000, gasPrice: 0.0000001 })
     .addData("ks", guard)
     .setNetworkId(KADENA_NETWORK_ID)
     .createTransaction();
 
   try {
     const response = await pactClient.dirtyRead(tx);
-    if (response?.result?.status === "success" && response.result.data) {
-      return response.result.data;
-    } else {
-      throw new Error(
-        response?.result?.error?.message || "Failed to generate token ID"
-      );
-    }
+    return response?.result?.status === "success" ? response.result.data : null;
   } catch (error) {
     console.error("Error generating token ID:", error);
     throw error;
@@ -983,6 +955,139 @@ app.post("/create-collection", async (req, res) => {
   }
 });
 
+/**
+ * POST /transfer
+ * Generate unsigned transaction data for token transfers between accounts
+ *
+ * @param {string} tokenAddress - The token contract address/module
+ * @param {string} sender - The sender's account address
+ * @param {string} receiver - The receiver's account address
+ * @param {string} amount - The amount to transfer
+ * @param {string} chainId - The chain ID to execute on
+ * @param {string} [meta] - Optional metadata for the transfer
+ * @param {number} [gasLimit] - Optional gas limit (default: 2500)
+ * @param {number} [gasPrice] - Optional gas price (default: 0.00000001)
+ * @param {number} [ttl] - Optional time-to-live in seconds (default: 600)
+ */
+app.post("/transfer", async (req, res) => {
+  try {
+    const {
+      tokenAddress,
+      sender,
+      receiver,
+      amount,
+      chainId,
+      meta = {},
+      gasLimit = 2500,
+      gasPrice = 0.00000001,
+      ttl = 600,
+    } = req.body;
+
+    // Validate required parameters
+    if (!tokenAddress || !sender || !receiver || !amount || !chainId) {
+      return res.status(400).json({
+        error: "Missing required parameters",
+        details:
+          "tokenAddress, sender, receiver, amount, and chainId are required",
+      });
+    }
+
+    // Validate amount format
+    if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).json({
+        error: "Invalid amount",
+        details: "Amount must be a positive number",
+      });
+    }
+
+    // Create Pact command
+    let cmd;
+    const client = getClient(chainId);
+
+    // Extract public key from sender (remove 'k:' prefix)
+    const senderKey = sender.startsWith("k:") ? sender.slice(2) : sender;
+
+    // Create command based on whether it's a fungible-v2 token or coin
+    if (tokenAddress === "coin") {
+      // Native KDA transfer
+      cmd = Pact.builder
+        .execution(
+          Pact.modules.coin["transfer"](sender, receiver, { decimal: amount })
+        )
+        .setMeta({
+          creationTime: creationTime(),
+          ttl,
+          gasLimit,
+          gasPrice,
+          chainId,
+          sender,
+          ...meta,
+        })
+        .setNetworkId(KADENA_NETWORK_ID)
+        .addSigner({ pubKey: senderKey }, (withCap) => [
+          withCap(Pact.lang.mkCap("Gas", "Pay gas", "coin.GAS", [])),
+          withCap(
+            Pact.lang.mkCap(
+              "Transfer",
+              "Capability to transfer funds",
+              "coin.TRANSFER",
+              [sender, receiver, { decimal: amount }]
+            )
+          ),
+        ])
+        .createTransaction();
+    } else {
+      // Fungible token transfer (using fungible-v2 standard)
+      cmd = Pact.builder
+        .execution(
+          `(${tokenAddress}.transfer "${sender}" "${receiver}" (read-decimal "amount"))`
+        )
+        .addData({ amount: { decimal: amount } })
+        .setMeta({
+          creationTime: creationTime(),
+          ttl,
+          gasLimit,
+          gasPrice,
+          chainId,
+          sender,
+          ...meta,
+        })
+        .setNetworkId(KADENA_NETWORK_ID)
+        .addSigner({ pubKey: senderKey }, (withCap) => [
+          withCap(Pact.lang.mkCap("Gas", "Pay gas", "coin.GAS", [])),
+          withCap(
+            Pact.lang.mkCap(
+              "Transfer",
+              "Capability to transfer tokens",
+              `${tokenAddress}.TRANSFER`,
+              [sender, receiver, { decimal: amount }]
+            )
+          ),
+        ])
+        .createTransaction();
+    }
+
+    // Return the unsigned transaction
+    return res.status(200).json({
+      transaction: cmd,
+      metadata: {
+        sender,
+        receiver,
+        amount: parseFloat(amount),
+        tokenAddress,
+        chainId,
+        networkId: KADENA_NETWORK_ID,
+      },
+    });
+  } catch (error) {
+    console.error("Transfer generation error:", error);
+    return res.status(500).json({
+      error: "Failed to generate transfer transaction",
+      details: NODE_ENV === "production" ? undefined : error.message,
+    });
+  }
+});
+
 // --- Server Start ---
 if (require.main === module) {
   // Only start the server if this file is run directly, not when imported for testing
@@ -1007,6 +1112,9 @@ if (require.main === module) {
     );
     console.log(
       `POST /create-collection (Body: { account, guard, name, description?, totalSupply?, chainId: "2" })`
+    );
+    console.log(
+      `POST /transfer (Body: { tokenAddress, sender, receiver, amount, chainId, meta?, gasLimit?, gasPrice?, ttl? })`
     );
   });
 }
