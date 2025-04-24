@@ -4,3 +4,5 @@ kadena-agent/.env
 kadena-api/yarn.lock
 /marmalade-examples
 /ecko-dex-ui
+/kadena-ai/__pycache__
+kadena-ai/.env

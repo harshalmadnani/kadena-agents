@@ -1,0 +1,11 @@
+# Core dependencies
+langchain>=0.0.335
+langchain-openai>=0.0.2
+langchain-core>=0.1.0
+openai>=1.0.0
+
+# HTTP and requests
+requests>=2.31.0
+
+# Environment management
+python-dotenv>=1.0.0 
