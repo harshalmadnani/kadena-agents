@@ -6,3 +6,4 @@ kadena-api/yarn.lock
 /ecko-dex-ui
 /kadena-ai/__pycache__
 kadena-ai/.env
+kadena-api/package-lock.json

@@ -8,6 +8,7 @@ A REST API server for interacting with Kadena blockchain, providing endpoints fo
 - ✅ Price quotes for token pairs
 - ✅ NFT creation and minting with Marmalade v2
 - ✅ Collection creation for NFTs
+- ✅ Support for all Kadena chains (0-19)
 
 ## Installation
 
@@ -35,6 +36,15 @@ const NETWORK_VERSION = "0.0";
 ```
 
 For production deployment, these values should be moved to environment variables.
+
+## Chain Support
+
+The API supports all Kadena chains (0-19). All endpoints that accept a `chainId` parameter will:
+
+- Accept any chain ID from 0 to 19
+- Convert numeric chain IDs to strings automatically
+- Default to chain 2 if no chainId is provided
+- Validate that chain IDs are within the valid range (0-19)
 
 ## API Endpoints
 
@@ -71,7 +81,7 @@ Gets price quotes for swapping tokens.
   "tokenInAddress": "coin",
   "tokenOutAddress": "kaddex.kdx",
   "amountIn": "10.0",
-  "chainId": "2"
+  "chainId": "0" // Chain ID (0-19), defaults to "2" if not specified
 }
 ```
 
@@ -82,7 +92,7 @@ OR
   "tokenInAddress": "coin",
   "tokenOutAddress": "kaddex.kdx",
   "amountOut": "5.0",
-  "chainId": "2"
+  "chainId": "0" // Chain ID (0-19), defaults to "2" if not specified
 }
 ```
 
@@ -117,9 +127,9 @@ Creates an unsigned transaction for swapping tokens.
   "tokenInAddress": "coin",
   "tokenOutAddress": "kaddex.kdx",
   "amountIn": "10.0",
-  "account": "k:abcdef1234567890...",
+  "account": "k:d61e615aec4e895c0006f7f2e56b37d36f18f35cce28286ad33e5bc52ded867a",
   "slippage": "0.005",
-  "chainId": "2"
+  "chainId": "0" // Chain ID (0-19), defaults to "2" if not specified
 }
 ```
 
@@ -130,9 +140,9 @@ OR
   "tokenInAddress": "coin",
   "tokenOutAddress": "kaddex.kdx",
   "amountOut": "5.0",
-  "account": "k:abcdef1234567890...",
+  "account": "k:d61e615aec4e895c0006f7f2e56b37d36f18f35cce28286ad33e5bc52ded867a",
   "slippage": "0.005",
-  "chainId": "2"
+  "chainId": "0" // Chain ID (0-19), defaults to "2" if not specified
 }
 ```
 
@@ -140,7 +150,7 @@ OR
 
 ```json
 {
-  "unsignedTransaction": {
+  "transaction": {
     "cmd": "...",
     "hash": "...",
     "sigs": [...],
@@ -161,19 +171,21 @@ Creates an unsigned transaction for minting an NFT.
 
 ```json
 {
-  "account": "k:abcdef1234567890...",
+  "account": "k:d61e615aec4e895c0006f7f2e56b37d36f18f35cce28286ad33e5bc52ded867a",
   "guard": {
-    "keys": ["abcdef1234567890..."],
+    "keys": [
+      "d61e615aec4e895c0006f7f2e56b37d36f18f35cce28286ad33e5bc52ded867a"
+    ],
     "pred": "keys-all"
   },
-  "mintTo": "k:abcdef1234567890...",
+  "mintTo": "k:3ca4ce859657c96a86a960787f75ce27bb5e5476f0b596957c7ca9f8d6d50811",
   "uri": "ipfs://bafkreib...",
   "precision": 0,
   "policy": "DEFAULT_COLLECTION_NON_UPDATABLE",
   "collectionId": "c:abcdef1234...:module",
   "name": "My NFT",
   "description": "An example NFT",
-  "chainId": "2"
+  "chainId": "0"
 }
 ```
 
@@ -181,21 +193,23 @@ For royalty-enabled NFTs:
 
 ```json
 {
-  "account": "k:abcdef1234567890...",
+  "account": "k:d61e615aec4e895c0006f7f2e56b37d36f18f35cce28286ad33e5bc52ded867a",
   "guard": {
-    "keys": ["abcdef1234567890..."],
+    "keys": [
+      "d61e615aec4e895c0006f7f2e56b37d36f18f35cce28286ad33e5bc52ded867a"
+    ],
     "pred": "keys-all"
   },
-  "mintTo": "k:abcdef1234567890...",
+  "mintTo": "k:3ca4ce859657c96a86a960787f75ce27bb5e5476f0b596957c7ca9f8d6d50811",
   "uri": "ipfs://bafkreib...",
   "precision": 0,
   "policy": "DEFAULT_COLLECTION_ROYALTY_NON_UPDATABLE",
   "collectionId": "c:abcdef1234...:module",
   "royalties": 2.5,
-  "royaltyRecipient": "k:abcdef1234567890...",
+  "royaltyRecipient": "k:d61e615aec4e895c0006f7f2e56b37d36f18f35cce28286ad33e5bc52ded867a",
   "name": "My NFT",
   "description": "An example NFT with royalties",
-  "chainId": "2"
+  "chainId": "0"
 }
 ```
 
@@ -203,7 +217,7 @@ For royalty-enabled NFTs:
 
 ```json
 {
-  "unsignedTransaction": {
+  "transaction": {
     "cmd": "...",
     "hash": "...",
     "sigs": [...],
@@ -225,15 +239,17 @@ Creates an unsigned transaction for creating a new NFT collection.
 
 ```json
 {
-  "account": "k:abcdef1234567890...",
+  "account": "k:d61e615aec4e895c0006f7f2e56b37d36f18f35cce28286ad33e5bc52ded867a",
   "guard": {
-    "keys": ["abcdef1234567890..."],
+    "keys": [
+      "d61e615aec4e895c0006f7f2e56b37d36f18f35cce28286ad33e5bc52ded867a"
+    ],
     "pred": "keys-all"
   },
   "name": "My Collection",
   "description": "An example NFT collection",
   "totalSupply": 10000,
-  "chainId": "2"
+  "chainId": "0" // Chain ID (0-19), defaults to "2" if not specified
 }
 ```
 
@@ -241,7 +257,7 @@ Creates an unsigned transaction for creating a new NFT collection.
 
 ```json
 {
-  "unsignedTransaction": {
+  "transaction": {
     "cmd": "...",
     "hash": "...",
     "sigs": [...],
@@ -262,10 +278,10 @@ Content-Type: application/json
 
 {
   "tokenAddress": "coin", // or fungible token address
-  "sender": "k:account", // sender's account
-  "receiver": "k:account", // receiver's account
+  "sender": "k:d61e615aec4e895c0006f7f2e56b37d36f18f35cce28286ad33e5bc52ded867a", // sender's account
+  "receiver": "k:3ca4ce859657c96a86a960787f75ce27bb5e5476f0b596957c7ca9f8d6d50811", // receiver's account
   "amount": "10.0", // amount to transfer
-  "chainId": "2", // chain ID
+  "chainId": "0", // chain ID (0-19), defaults to "2" if not specified
   "meta": {}, // optional metadata
   "gasLimit": 2500, // optional gas limit
   "gasPrice": 0.00000001, // optional gas price
@@ -283,11 +299,11 @@ Content-Type: application/json
     "sigs": []
   },
   "metadata": {
-    "sender": "k:account",
-    "receiver": "k:account",
+    "sender": "k:d61e615aec4e895c0006f7f2e56b37d36f18f35cce28286ad33e5bc52ded867a",
+    "receiver": "k:3ca4ce859657c96a86a960787f75ce27bb5e5476f0b596957c7ca9f8d6d50811",
     "amount": 10.0,
     "tokenAddress": "coin",
-    "chainId": "2",
+    "chainId": "0",
     "networkId": "mainnet01"
   }
 }
@@ -330,7 +346,7 @@ async function getQuote() {
       tokenInAddress: "coin",
       tokenOutAddress: "kaddex.kdx",
       amountIn: "10.0",
-      chainId: "2",
+      chainId: "0", // Chain ID (0-19), defaults to "2" if not specified
     });
 
     console.log("Expected output amount:", response.data.amountOut);
@@ -354,7 +370,7 @@ curl -X POST http://localhost:3000/quote \
     "tokenInAddress": "coin",
     "tokenOutAddress": "kaddex.kdx",
     "amountIn": "10.0",
-    "chainId": "2"
+    "chainId": "0" # Chain ID (0-19), defaults to "2" if not specified
   }'
 ```
 

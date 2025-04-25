@@ -140,7 +140,7 @@ describe("Kadena API Server Tests", () => {
           // This allows for either success or meaningful errors
           expect(res.status).to.be.oneOf([200, 400, 500]);
           if (res.status === 200) {
-            expect(res.body).to.have.property("unsignedTransaction");
+            expect(res.body).to.have.property("transaction");
           }
           done();
         });
@@ -162,7 +162,7 @@ describe("Kadena API Server Tests", () => {
           // We're only checking if the request is handled, not specific response
           expect(res.status).to.be.oneOf([200, 400, 500]);
           if (res.status === 200) {
-            expect(res.body).to.have.property("unsignedTransaction");
+            expect(res.body).to.have.property("transaction");
           }
           done();
         });
@@ -212,9 +212,9 @@ describe("Kadena API Server Tests", () => {
             expect(res.body).to.be.an("object");
 
             // Check for basics of response structure
-            if (res.body.unsignedTransaction) {
-              // If it has an unsignedTransaction, check basic structure
-              const tx = res.body.unsignedTransaction;
+            if (res.body.transaction) {
+              // If it has a transaction, check basic structure
+              const tx = res.body.transaction;
               expect(tx).to.be.an("object");
             }
 
@@ -290,9 +290,9 @@ describe("Kadena API Server Tests", () => {
           if (res.status === 200) {
             expect(res.body).to.be.an("object");
 
-            // Check for unsignedTransaction only if it exists
-            if (res.body.unsignedTransaction) {
-              const tx = res.body.unsignedTransaction;
+            // Check for transaction only if it exists
+            if (res.body.transaction) {
+              const tx = res.body.transaction;
               expect(tx).to.be.an("object");
             }
           }
