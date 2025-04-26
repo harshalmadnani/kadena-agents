@@ -53,6 +53,11 @@ app.use(express.json());
 
 // API key middleware
 app.use((req, res, next) => {
+  // Skip API key check for health endpoint
+  if (req.path === "/" || req.path === "/health") {
+    return next();
+  }
+
   const apiKey = req.headers["x-api-key"];
 
   if (!apiKey) {
