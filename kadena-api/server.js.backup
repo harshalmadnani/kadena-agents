@@ -150,6 +150,20 @@ const ensureChainIdString = (chainId) => {
   return chainId !== undefined && chainId !== null ? String(chainId) : "2"; // Default to chain 2 if undefined
 };
 
+// Helper function to validate chainId is in the valid range for Kadena (0-19)
+const validateChainId = (chainId) => {
+  const chainIdStr = ensureChainIdString(chainId);
+  // Check if chainId is between 0-19
+  if (!/^([0-9]|1[0-9])$/.test(chainIdStr)) {
+    return {
+      valid: false,
+      error: "Invalid chainId",
+      details: "Chain ID must be between 0-19 for Kadena mainnet",
+    };
+  }
+  return { valid: true, chainId: chainIdStr };
+};
+
 const getClient = (chainId) =>
   createClient(
     `${KADENA_API_HOST}/chainweb/${NETWORK_VERSION}/${KADENA_NETWORK_ID}/chain/${ensureChainIdString(
@@ -244,10 +258,12 @@ app.post("/quote", async (req, res) => {
     } = req.body;
 
     // Validate required parameters
-    if (ensureChainIdString(chainId) !== "2") {
-      return res
-        .status(400)
-        .json({ error: "Currently only chainId 2 is supported" });
+    const chainIdValidation = validateChainId(chainId);
+    if (!chainIdValidation.valid) {
+      return res.status(400).json({
+        error: chainIdValidation.error,
+        details: chainIdValidation.details,
+      });
     }
 
     if (!tokenInAddress || !tokenOutAddress) {
@@ -912,10 +928,11 @@ app.post("/launch-nft", async (req, res) => {
     } = req.body;
 
     // 1. Validate required parameters
-    if (ensureChainIdString(chainId) !== "2") {
+    const chainIdValidation = validateChainId(chainId);
+    if (!chainIdValidation.valid) {
       return res.status(400).json({
-        error: "Operation not supported",
-        details: "Currently only chainId 2 is supported",
+        error: chainIdValidation.error,
+        details: chainIdValidation.details,
       });
     }
 
@@ -1004,6 +1021,55 @@ app.post("/launch-nft", async (req, res) => {
 
     const pactClient = getClient(chainId);
 
+    // Fetch account's guard from the blockchain
+    console.log(`Fetching account details for ${account}`);
+    const accountDetailsCmd = Pact.builder
+      .execution(`(coin.details "${account}")`)
+      .setMeta({
+        chainId: ensureChainIdString(chainId),
+        sender: account,
+        creationTime: creationTime(),
+        ttl: 600,
+      })
+      .setNetworkId(KADENA_NETWORK_ID)
+      .createTransaction();
+
+    let accountGuard;
+    try {
+      const accountDetailsData = await pactClient.local(accountDetailsCmd, {
+        preflight: false,
+        signatureVerification: false,
+      });
+
+      // Log the account details response for debugging
+      console.log(
+        "Account details response:",
+        JSON.stringify(accountDetailsData, null, 2)
+      );
+
+      if (
+        accountDetailsData?.result?.status !== "success" ||
+        !accountDetailsData.result.data?.guard
+      ) {
+        console.error(
+          "Failed to get account details:",
+          accountDetailsData?.result?.error || "Unknown error"
+        );
+        return res.status(404).json({
+          error: "Account not found",
+          details: "Could not retrieve account details from blockchain",
+        });
+      }
+
+      accountGuard = accountDetailsData.result.data.guard;
+    } catch (error) {
+      console.error("Error fetching account guard:", error);
+      return res.status(500).json({
+        error: "Failed to fetch account data",
+        details: error.message,
+      });
+    }
+
     try {
       // 5. Generate the token ID based on Marmalade implementation
       let tokenId;
@@ -1030,7 +1096,7 @@ app.post("/launch-nft", async (req, res) => {
             creationTime: creationTime(),
             ttl: 600,
           })
-          .addKeyset("ks", guard.pred, ...guard.keys)
+          .addKeyset("ks", accountGuard.pred, ...accountGuard.keys)
           .setNetworkId(KADENA_NETWORK_ID)
           .createTransaction();
 
@@ -1190,7 +1256,7 @@ app.post("/launch-nft", async (req, res) => {
         },
         signers: [
           {
-            pubKey: guard.keys[0],
+            pubKey: accountGuard.keys[0],
             scheme: "ED25519",
             clist: capabilities,
           },
@@ -1252,10 +1318,11 @@ app.post("/create-collection", async (req, res) => {
     } = req.body;
 
     // 1. Validate required parameters
-    if (ensureChainIdString(chainId) !== "2") {
+    const chainIdValidation = validateChainId(chainId);
+    if (!chainIdValidation.valid) {
       return res.status(400).json({
-        error: "Operation not supported",
-        details: "Currently only chainId 2 is supported",
+        error: chainIdValidation.error,
+        details: chainIdValidation.details,
       });
     }
 
@@ -1299,6 +1366,55 @@ app.post("/create-collection", async (req, res) => {
     // 4. Generate a collection ID (optional - could be server-side or client-side)
     const pactClient = getClient(chainId);
 
+    // Fetch account's guard from the blockchain
+    console.log(`Fetching account details for ${account}`);
+    const accountDetailsCmd = Pact.builder
+      .execution(`(coin.details "${account}")`)
+      .setMeta({
+        chainId: ensureChainIdString(chainId),
+        sender: account,
+        creationTime: creationTime(),
+        ttl: 600,
+      })
+      .setNetworkId(KADENA_NETWORK_ID)
+      .createTransaction();
+
+    let accountGuard;
+    try {
+      const accountDetailsData = await pactClient.local(accountDetailsCmd, {
+        preflight: false,
+        signatureVerification: false,
+      });
+
+      // Log the account details response for debugging
+      console.log(
+        "Account details response:",
+        JSON.stringify(accountDetailsData, null, 2)
+      );
+
+      if (
+        accountDetailsData?.result?.status !== "success" ||
+        !accountDetailsData.result.data?.guard
+      ) {
+        console.error(
+          "Failed to get account details:",
+          accountDetailsData?.result?.error || "Unknown error"
+        );
+        return res.status(404).json({
+          error: "Account not found",
+          details: "Could not retrieve account details from blockchain",
+        });
+      }
+
+      accountGuard = accountDetailsData.result.data.guard;
+    } catch (error) {
+      console.error("Error fetching account guard:", error);
+      return res.status(500).json({
+        error: "Failed to fetch account data",
+        details: error.message,
+      });
+    }
+
     try {
       // Create collection ID first using Marmalade v2 collection policy
       const collectionIdCmd = Pact.builder
@@ -1315,7 +1431,7 @@ app.post("/create-collection", async (req, res) => {
           creationTime: creationTime(),
           ttl: 600,
         })
-        .addKeyset("ks", guard.pred, ...guard.keys)
+        .addKeyset("ks", accountGuard.pred, ...accountGuard.keys)
         .setNetworkId(KADENA_NETWORK_ID)
         .createTransaction();
 
@@ -1390,7 +1506,7 @@ app.post("/create-collection", async (req, res) => {
         },
         signers: [
           {
-            pubKey: guard.keys[0],
+            pubKey: accountGuard.keys[0],
             scheme: "ED25519",
             clist: capabilities,
           },
@@ -1532,8 +1648,41 @@ app.post("/transfer", async (req, res) => {
     // 5. Format amount with proper precision
     const formattedAmount = reduceBalance(parsedAmount, tokenPrecision);
 
-    // 6. Extract public key from sender (remove 'k:' prefix if present)
-    const senderKey = sender.startsWith("k:") ? sender.slice(2) : sender;
+    // 6. Fetch account guard to include in the transaction
+    console.log(`Fetching account details for ${sender}`);
+    const pactClient = getClient(chainId);
+    const accountDetailsCmd = Pact.builder
+      .execution(`(coin.details "${sender}")`)
+      .setMeta({ chainId: ensureChainIdString(chainId), sender: sender })
+      .setNetworkId(KADENA_NETWORK_ID)
+      .createTransaction();
+
+    const accountDetailsData = await pactClient.local(accountDetailsCmd, {
+      preflight: false,
+      signatureVerification: false,
+    });
+
+    // Log the account details response for debugging
+    console.log(
+      "Account details response:",
+      JSON.stringify(accountDetailsData, null, 2)
+    );
+
+    if (
+      accountDetailsData?.result?.status !== "success" ||
+      !accountDetailsData.result.data?.guard
+    ) {
+      console.error(
+        "Failed to get account details:",
+        accountDetailsData?.result?.error || "Unknown error"
+      );
+      return res.status(404).json({
+        error: "Account not found",
+        details: "Could not retrieve account details from blockchain",
+      });
+    }
+
+    const userGuard = accountDetailsData.result.data.guard;
 
     // 7. Prepare transaction metadata
     const txMeta = {
@@ -1547,7 +1696,6 @@ app.post("/transfer", async (req, res) => {
     };
 
     // 8. Create client and transaction
-    const client = getClient(chainId);
     let cmd;
 
     try {
@@ -1561,7 +1709,7 @@ app.post("/transfer", async (req, res) => {
           )
           .setMeta(txMeta)
           .setNetworkId(KADENA_NETWORK_ID)
-          .addSigner({ pubKey: senderKey }, (withCap) => [
+          .addSigner({ pubKey: userGuard.keys[0] }, (withCap) => [
             withCap(Pact.lang.mkCap("Gas", "Pay gas", "coin.GAS", [])),
             withCap(
               Pact.lang.mkCap(
@@ -1582,7 +1730,7 @@ app.post("/transfer", async (req, res) => {
           .addData({ amount: { decimal: formattedAmount } })
           .setMeta(txMeta)
           .setNetworkId(KADENA_NETWORK_ID)
-          .addSigner({ pubKey: senderKey }, (withCap) => [
+          .addSigner({ pubKey: userGuard.keys[0] }, (withCap) => [
             withCap(Pact.lang.mkCap("Gas", "Pay gas", "coin.GAS", [])),
             withCap(
               Pact.lang.mkCap(
@@ -1640,19 +1788,19 @@ if (require.main === module) {
     console.log("Available Endpoints:");
     console.log(`GET /health (Health check endpoint)`);
     console.log(
-      `POST /quote (Body: { tokenInAddress, tokenOutAddress, amountIn | amountOut, chainId: "2" })`
+      `POST /quote (Body: { tokenInAddress, tokenOutAddress, amountIn | amountOut, chainId: "0-19" })`
     );
     console.log(
-      `POST /swap (Body: { tokenInAddress, tokenOutAddress, amountIn | amountOut, account, slippage?, chainId: "2" })`
+      `POST /swap (Body: { tokenInAddress, tokenOutAddress, amountIn | amountOut, account, slippage?, chainId: "0-19" })`
     );
     console.log(
-      `POST /launch-nft (Body: { account, guard, mintTo, uri, precision?, policy?, collectionId, royalties?, royaltyRecipient?, name?, description?, chainId: "2" })`
+      `POST /launch-nft (Body: { account, guard, mintTo, uri, precision?, policy?, collectionId, royalties?, royaltyRecipient?, name?, description?, chainId: "0-19" })`
     );
     console.log(
-      `POST /create-collection (Body: { account, guard, name, description?, totalSupply?, chainId: "2" })`
+      `POST /create-collection (Body: { account, guard, name, description?, totalSupply?, chainId: "0-19" })`
     );
     console.log(
-      `POST /transfer (Body: { tokenAddress, sender, receiver, amount, chainId, meta?, gasLimit?, gasPrice?, ttl? })`
+      `POST /transfer (Body: { tokenAddress, sender, receiver, amount, chainId: "0-19", meta?, gasLimit?, gasPrice?, ttl? })`
     );
   });
 }
