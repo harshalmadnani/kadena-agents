@@ -1,53 +1,15 @@
 // Load environment variables first
 require("dotenv").config();
 
-console.log("Server.js is being loaded...");
-console.log("Environment variables:", {
-  API_KEY: process.env.API_KEY,
-  PORT: process.env.PORT,
-});
-
 const express = require("express");
 const cors = require("cors");
 const config = require("./config");
-const { PORT, RATE_LIMIT, API_KEY, KADENA_NETWORK_ID, KADENA_API_HOST } =
-  config;
-
-let rateLimit, helmet, morgan;
-try {
-  rateLimit = require("express-rate-limit");
-  helmet = require("helmet");
-  morgan = require("morgan");
-} catch (err) {
-  console.warn("Optional dependencies not available");
-}
+const { PORT, API_KEY, KADENA_NETWORK_ID, KADENA_API_HOST } = config;
 
 // --- Express App Setup ---
 const app = express();
 
 // --- Middleware ---
-if (rateLimit) {
-  const apiLimiter = rateLimit({
-    windowMs: RATE_LIMIT.windowMs,
-    max: RATE_LIMIT.max,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-      error: "Too many requests",
-      details: "Rate limit exceeded",
-    },
-  });
-  app.use(apiLimiter);
-}
-
-if (helmet) {
-  app.use(helmet());
-}
-
-if (morgan) {
-  app.use(morgan("dev"));
-}
-
 app.use(cors());
 app.use(express.json());
 
