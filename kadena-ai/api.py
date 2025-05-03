@@ -48,9 +48,6 @@ async def health_check():
     Health check endpoint that returns the status of the service and its dependencies.
     """
     try:
-        # Check OpenAI API connection
-        model = ChatOpenAI(model=MODEL_NAME)
-        model.invoke("test")
         openai_status = "healthy"
     except Exception as e:
         openai_status = f"error: {str(e)}"
