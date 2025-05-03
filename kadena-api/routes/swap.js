@@ -10,6 +10,7 @@ const {
   creationTime,
   getTokenPrecision,
   reduceBalance,
+  generateTransactionHash,
 } = require("../utils");
 
 /**
@@ -105,6 +106,8 @@ router.post("/", async (req, res) => {
       .setMeta({ chainId: ensureChainIdString(chainId), sender: account })
       .setNetworkId(KADENA_NETWORK_ID)
       .createTransaction();
+
+    // Fetch account details
 
     const accountDetailsData = await pactClient.local(accountDetailsCmd, {
       preflight: false,
@@ -262,6 +265,8 @@ router.post("/", async (req, res) => {
       .setNetworkId(KADENA_NETWORK_ID)
       .createTransaction();
 
+    // Request the pair account identifier
+
     let pairAccount;
     try {
       const pairAccountData = await pactClient.local(pairAccountCmd, {
@@ -279,8 +284,8 @@ router.post("/", async (req, res) => {
       pairAccount = pairAccountData.result.data;
     } catch (error) {
       console.error("Error fetching pair account:", error);
+      // Use fallback pair account if pair retrieval fails
       pairAccount = `${KADDEX_NAMESPACE}.exchange-swap-pair`;
-      console.log(`Using fallback pair account: ${pairAccount}`);
     }
 
     // 5. Construct the transaction code based on swap type
@@ -360,10 +365,25 @@ router.post("/", async (req, res) => {
           .substring(2, 15)}`,
       };
 
+      // Generate transaction hash
+      let transactionHash;
+      try {
+        // Stringify the command first for consistent hashing
+        const cmdString = JSON.stringify(pactCommand);
+        transactionHash = generateTransactionHash(cmdString);
+      } catch (hashError) {
+        console.error("Failed to generate swap transaction hash:", hashError);
+        return res.status(500).json({
+          error: "Transaction hash generation failed",
+          details:
+            hashError.message || "Unable to create a valid transaction hash",
+        });
+      }
+
       // Final transaction object for client signing
       const preparedTx = {
         cmd: JSON.stringify(pactCommand),
-        hash: "hash_placeholder",
+        hash: transactionHash,
         sigs: [null],
       };
 

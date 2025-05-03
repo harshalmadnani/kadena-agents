@@ -8,6 +8,8 @@ const {
   ensureChainIdString,
   getTokenPrecision,
   reduceBalance,
+  generateTransactionHash,
+  creationTime,
 } = require("../utils");
 
 /**
@@ -100,7 +102,7 @@ router.post("/", async (req, res) => {
 
     // 6. Prepare transaction metadata
     const txMeta = {
-      creationTime: () => Math.round(new Date().getTime() / 1000) - 10,
+      creationTime: creationTime(),
       ttl,
       gasLimit,
       gasPrice,
@@ -157,11 +159,26 @@ router.post("/", async (req, res) => {
           .createTransaction();
       }
 
+      // Calculate the transaction hash
+      let transactionHash;
+      try {
+        // Stringify the command first for consistent hashing
+        const cmdString = JSON.stringify(cmd);
+        transactionHash = generateTransactionHash(cmdString);
+      } catch (hashError) {
+        console.error("Failed to generate transaction hash:", hashError);
+        return res.status(500).json({
+          error: "Transaction hash generation failed",
+          details:
+            hashError.message || "Unable to create a valid transaction hash",
+        });
+      }
+
       // 8. Return the transaction and metadata
       return res.status(200).json({
         transaction: {
           cmd: JSON.stringify(cmd),
-          hash: "hash_placeholder",
+          hash: transactionHash,
           sigs: [null],
         },
         metadata: {

@@ -20,6 +20,7 @@
   "license": "ISC",
   "dependencies": {
     "@kadena/client": "^1.17.0",
+    "@kadena/cryptography-utils": "^0.4.4",
     "bignumber.js": "^9.1.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -29,10 +30,10 @@
     "morgan": "^1.10.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0",
-    "mocha": "^10.4.0",
     "chai": "^4.4.1",
-    "chai-http": "^4.4.0"
+    "chai-http": "^4.4.0",
+    "mocha": "^10.4.0",
+    "nodemon": "^3.1.0"
   },
   "engines": {
     "node": ">=16.0.0"

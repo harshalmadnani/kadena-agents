@@ -7,7 +7,107 @@ const {
   ensureChainIdString,
   validateChainId,
   creationTime,
+  generateTransactionHash,
 } = require("../utils");
+
+/**
+ * Shared utility functions to reduce code duplication
+ */
+
+/**
+ * Validates account format
+ * @param {string} account - The account to validate
+ * @returns {Object} - Validation result with valid flag and error details
+ */
+const validateAccount = (account) => {
+  if (!account || !account.startsWith("k:")) {
+    return {
+      valid: false,
+      error: "Invalid account format",
+      details: "Account must start with k:",
+    };
+  }
+  return { valid: true };
+};
+
+/**
+ * Validates guard format
+ * @param {Object} guard - The guard object to validate
+ * @returns {Object} - Validation result with valid flag and error details
+ */
+const validateGuard = (guard) => {
+  if (!guard || !guard.keys || !guard.keys.length || !guard.pred) {
+    return {
+      valid: false,
+      error: "Missing required guard parameters",
+      details: "Guard must have keys array and pred property",
+    };
+  }
+
+  if (guard.keys.some((k) => typeof k !== "string" || k.length !== 64)) {
+    return {
+      valid: false,
+      error: "Invalid guard keys",
+      details: "Guard keys must be 64-character hex public keys",
+    };
+  }
+
+  return { valid: true };
+};
+
+/**
+ * Retrieves account guard from blockchain
+ * @param {string} account - The account address
+ * @param {string} chainId - The chain ID
+ * @returns {Promise<Object>} - Account guard object or error
+ */
+const getAccountGuard = async (account, chainId) => {
+  try {
+    const pactClient = getClient(chainId);
+    const accountDetailsCmd = Pact.builder
+      .execution(`(coin.details "${account}")`)
+      .setMeta({ chainId: ensureChainIdString(chainId), sender: account })
+      .setNetworkId(KADENA_NETWORK_ID)
+      .createTransaction();
+
+    const accountDetailsData = await pactClient.local(accountDetailsCmd, {
+      preflight: false,
+      signatureVerification: false,
+    });
+
+    if (!accountDetailsData?.result?.data?.guard) {
+      throw new Error("Account not found");
+    }
+
+    return {
+      success: true,
+      guard: accountDetailsData.result.data.guard,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: "Account not found",
+      details: error.message,
+    };
+  }
+};
+
+/**
+ * Creates common transaction metadata
+ * @param {string} chainId - The chain ID
+ * @param {string} sender - The sender account
+ * @returns {Object} - Transaction metadata
+ */
+const createTxMeta = (chainId, sender) => {
+  return {
+    chainId: ensureChainIdString(chainId),
+    sender,
+    gasLimit: 10000,
+    gasPrice: 0.0000001,
+    ttl: 28800,
+    creationTime: creationTime(),
+  };
+};
 
 /**
  * POST /nft/launch
@@ -39,27 +139,37 @@ router.post("/launch", async (req, res) => {
       });
     }
 
-    if (
-      !account ||
-      !guard ||
-      !guard.keys ||
-      !guard.keys.length ||
-      !guard.pred ||
-      !mintTo ||
-      !uri ||
-      !collectionId
-    ) {
+    // Validate account and guard using shared functions
+    const accountValidation = validateAccount(account);
+    if (!accountValidation.valid) {
       return res.status(400).json({
-        error: "Missing required parameters",
-        details: "account, guard, mintTo, uri, and collectionId are required",
+        error: accountValidation.error,
+        details: accountValidation.details,
       });
     }
 
-    // Validate account formats
-    if (!account.startsWith("k:") || !mintTo.startsWith("k:")) {
+    const guardValidation = validateGuard(guard);
+    if (!guardValidation.valid) {
       return res.status(400).json({
-        error: "Invalid account format",
-        details: "account and mintTo must start with k:",
+        error: guardValidation.error,
+        details: guardValidation.details,
+      });
+    }
+
+    // Validate mintTo account
+    const mintToValidation = validateAccount(mintTo);
+    if (!mintToValidation.valid) {
+      return res.status(400).json({
+        error: "Invalid mintTo account",
+        details: mintToValidation.details,
+      });
+    }
+
+    // Validate other required fields
+    if (!uri || !collectionId) {
+      return res.status(400).json({
+        error: "Missing required parameters",
+        details: "uri and collectionId are required",
       });
     }
 
@@ -72,7 +182,8 @@ router.post("/launch", async (req, res) => {
         });
       }
 
-      if (!royaltyRecipient || !royaltyRecipient.startsWith("k:")) {
+      const royaltyRecipientValidation = validateAccount(royaltyRecipient);
+      if (!royaltyRecipientValidation.valid) {
         return res.status(400).json({
           error: "Missing/Invalid royalty recipient",
           details:
@@ -81,43 +192,19 @@ router.post("/launch", async (req, res) => {
       }
     }
 
-    // Validate guard keys
-    if (guard.keys.some((k) => typeof k !== "string" || k.length !== 64)) {
-      return res.status(400).json({
-        error: "Invalid guard keys",
-        details: "Guard keys must be 64-character hex public keys",
-      });
-    }
-
-    const pactClient = getClient(chainId);
-
-    // Fetch account's guard
-    const accountDetailsCmd = Pact.builder
-      .execution(`(coin.details "${account}")`)
-      .setMeta({ chainId: ensureChainIdString(chainId), sender: account })
-      .setNetworkId(KADENA_NETWORK_ID)
-      .createTransaction();
-
-    let accountGuard;
-    try {
-      const accountDetailsData = await pactClient.local(accountDetailsCmd, {
-        preflight: false,
-        signatureVerification: false,
-      });
-
-      if (!accountDetailsData?.result?.data?.guard) {
-        throw new Error("Account not found");
-      }
-
-      accountGuard = accountDetailsData.result.data.guard;
-    } catch (error) {
+    // Get account guard
+    const accountGuardResult = await getAccountGuard(account, chainId);
+    if (!accountGuardResult.success) {
       return res.status(404).json({
-        error: "Account not found",
-        details: error.message,
+        error: accountGuardResult.error,
+        details: accountGuardResult.details,
       });
     }
+    const accountGuard = accountGuardResult.guard;
 
     try {
+      const pactClient = getClient(chainId);
+
       // Generate token ID
       let policyName =
         policy === "DEFAULT_COLLECTION_NON_UPDATABLE"
@@ -151,25 +238,14 @@ router.post("/launch", async (req, res) => {
       const tokenId = tokenIdResult.result.data;
 
       // Get mintTo account's guard
-      const mintToGuardCmd = Pact.builder
-        .execution(`(coin.details "${mintTo}")`)
-        .setMeta({ chainId: ensureChainIdString(chainId) })
-        .setNetworkId(KADENA_NETWORK_ID)
-        .createTransaction();
-
-      const mintToGuardData = await pactClient.local(mintToGuardCmd, {
-        preflight: false,
-        signatureVerification: false,
-      });
-
-      if (!mintToGuardData?.result?.data?.guard) {
+      const mintToGuardResult = await getAccountGuard(mintTo, chainId);
+      if (!mintToGuardResult.success) {
         return res.status(404).json({
           error: "MintTo account not found",
           details: "Could not retrieve mintTo account details",
         });
       }
-
-      const mintToGuard = mintToGuardData.result.data.guard;
+      const mintToGuard = mintToGuardResult.guard;
 
       // Construct NFT creation and minting code
       const pactCode = `(use marmalade-v2.ledger)
@@ -237,14 +313,7 @@ router.post("/launch", async (req, res) => {
       }
 
       // Transaction metadata
-      const txMeta = {
-        chainId: ensureChainIdString(chainId),
-        sender: account,
-        gasLimit: 10000,
-        gasPrice: 0.0000001,
-        ttl: 28800,
-        creationTime: creationTime(),
-      };
+      const txMeta = createTxMeta(chainId, account);
 
       // Create transaction
       const pactCommand = {
@@ -268,11 +337,27 @@ router.post("/launch", async (req, res) => {
           .substring(2, 15)}`,
       };
 
+      // Generate transaction hash
+      let transactionHash;
+      try {
+        // Stringify the command first for consistent hashing
+        const cmdString = JSON.stringify(pactCommand);
+        transactionHash = generateTransactionHash(cmdString);
+        console.log("Transaction hash:", transactionHash);
+      } catch (hashError) {
+        console.error("Failed to generate NFT transaction hash:", hashError);
+        return res.status(500).json({
+          error: "Transaction hash generation failed",
+          details:
+            hashError.message || "Unable to create a valid transaction hash",
+        });
+      }
+
       // Return transaction data
       return res.json({
         transaction: {
           cmd: JSON.stringify(pactCommand),
-          hash: "hash_placeholder",
+          hash: transactionHash,
           sigs: [null],
         },
         tokenId: tokenId,
@@ -324,70 +409,51 @@ router.post("/collection", async (req, res) => {
       });
     }
 
-    if (
-      !account ||
-      !guard ||
-      !guard.keys ||
-      !guard.keys.length ||
-      !guard.pred ||
-      !name
-    ) {
+    // Validate account and guard using shared functions
+    const accountValidation = validateAccount(account);
+    if (!accountValidation.valid) {
+      return res.status(400).json({
+        error: accountValidation.error,
+        details: accountValidation.details,
+      });
+    }
+
+    const guardValidation = validateGuard(guard);
+    if (!guardValidation.valid) {
+      return res.status(400).json({
+        error: guardValidation.error,
+        details: guardValidation.details,
+      });
+    }
+
+    // Validate name
+    if (!name) {
       return res.status(400).json({
         error: "Missing required parameters",
-        details: "account, guard, and name are required",
+        details: "name is required",
       });
     }
 
-    // Validate account format
-    if (!account.startsWith("k:")) {
-      return res.status(400).json({
-        error: "Invalid account format",
-        details: "account must start with k:",
-      });
-    }
-
-    // Validate guard keys
-    if (guard.keys.some((k) => typeof k !== "string" || k.length !== 64)) {
-      return res.status(400).json({
-        error: "Invalid guard keys",
-        details: "Guard keys must be 64-character hex public keys",
-      });
-    }
-
-    const pactClient = getClient(chainId);
-
-    // Fetch account's guard
-    const accountDetailsCmd = Pact.builder
-      .execution(`(coin.details "${account}")`)
-      .setMeta({ chainId: ensureChainIdString(chainId), sender: account })
-      .setNetworkId(KADENA_NETWORK_ID)
-      .createTransaction();
-
-    let accountGuard;
-    try {
-      const accountDetailsData = await pactClient.local(accountDetailsCmd, {
-        preflight: false,
-        signatureVerification: false,
-      });
-
-      if (!accountDetailsData?.result?.data?.guard) {
-        throw new Error("Account not found");
-      }
-
-      accountGuard = accountDetailsData.result.data.guard;
-    } catch (error) {
+    // Get account guard
+    const accountGuardResult = await getAccountGuard(account, chainId);
+    if (!accountGuardResult.success) {
       return res.status(404).json({
-        error: "Account not found",
-        details: error.message,
+        error: accountGuardResult.error,
+        details: accountGuardResult.details,
       });
     }
+    const accountGuard = accountGuardResult.guard;
 
     try {
+      const pactClient = getClient(chainId);
+
       // Create collection ID
       const collectionIdCmd = Pact.builder
         .execution(
           `(use marmalade-v2.collection-policy-v1)
-           (create-collection-id ${JSON.stringify(name)} (read-keyset 'ks))`
+           (marmalade-v2.collection-policy-v1.create-collection-id ${JSON.stringify(
+             name
+           )} (read-keyset 'ks))`
         )
         .setMeta({
           chainId: ensureChainIdString(chainId),
@@ -436,20 +502,13 @@ router.post("/collection", async (req, res) => {
         },
         {
           name: "Create Collection",
-          pred: "marmalade-v2.collection-policy-v1.ENFORCE-COLLECTION",
+          pred: "marmalade-v2.collection-policy-v1.COLLECTION-CREATE",
           args: [collectionId],
         },
       ];
 
       // Transaction metadata
-      const txMeta = {
-        chainId: ensureChainIdString(chainId),
-        sender: account,
-        gasLimit: 10000,
-        gasPrice: 0.0000001,
-        ttl: 28800,
-        creationTime: creationTime(),
-      };
+      const txMeta = createTxMeta(chainId, account);
 
       // Create transaction
       const pactCommand = {
@@ -473,11 +532,29 @@ router.post("/collection", async (req, res) => {
           .substring(2, 15)}`,
       };
 
+      // Generate transaction hash
+      let transactionHash;
+      try {
+        // Stringify the command first for consistent hashing
+        const cmdString = JSON.stringify(pactCommand);
+        transactionHash = generateTransactionHash(cmdString);
+      } catch (hashError) {
+        console.error(
+          "Failed to generate collection transaction hash:",
+          hashError
+        );
+        return res.status(500).json({
+          error: "Transaction hash generation failed",
+          details:
+            hashError.message || "Unable to create a valid transaction hash",
+        });
+      }
+
       // Return transaction data
       return res.json({
         transaction: {
           cmd: JSON.stringify(pactCommand),
-          hash: "hash_placeholder",
+          hash: transactionHash,
           sigs: [null],
         },
         collectionId: collectionId,
