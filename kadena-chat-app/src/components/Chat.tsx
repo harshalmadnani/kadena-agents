@@ -300,7 +300,7 @@ const Chat: React.FC = () => {
         >
           {messages.length === 0 ? (
             <div className="empty-state">
-              <h2>Welcome to Kadena Chat</h2>
+              <h2>Welcome to Kadena Agent K</h2>
               <p>Ask anything about Kadena blockchain!</p>
             </div>
           ) : (
@@ -371,20 +371,22 @@ const Chat: React.FC = () => {
       </div>
 
       <form className="input-container" onSubmit={handleSendMessage}>
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Type your message here..."
-          disabled={isLoading || isSubmittingTx}
-        />
-        <button
-          type="submit"
-          className="send-button"
-          disabled={isLoading || isSubmittingTx || !inputValue.trim()}
-        >
-          {isLoading ? "Sending..." : "Send"}
-        </button>
+        <div className="input-bar">
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Type your message here..."
+            disabled={isLoading || isSubmittingTx}
+          />
+          <button
+            type="submit"
+            className="send-button"
+            disabled={isLoading || isSubmittingTx || !inputValue.trim()}
+          >
+            {isLoading ? "Sending..." : "Send"}
+          </button>
+        </div>
       </form>
     </div>
   );
