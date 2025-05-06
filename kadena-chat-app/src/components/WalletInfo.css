@@ -1,0 +1,79 @@
+.wallet-info {
+  background-color: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-top: 1rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.wallet-info h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #333;
+  font-size: 1.2rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+.wallet-details {
+  margin-bottom: 1rem;
+}
+
+.wallet-item {
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.25rem;
+}
+
+.value {
+  font-family: monospace;
+  word-break: break-all;
+  background-color: #f8f9fa;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.account-value {
+  color: #333;
+}
+
+.key-value {
+  color: #7928ca;
+  font-size: 0.85rem;
+}
+
+.balance-value {
+  color: #0ca678;
+  font-weight: bold;
+}
+
+.error {
+  color: #e03131;
+}
+
+.wallet-actions {
+  margin-top: 1rem;
+}
+
+.wallet-button {
+  background-color: #7928ca;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.wallet-button:hover {
+  background-color: #6a23b5;
+} 
