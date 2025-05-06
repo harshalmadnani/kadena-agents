@@ -27,20 +27,31 @@ router.post("/", async (req, res) => {
       account,
       slippage = "0.005", // Default 0.5%
       chainId = "2",
+      gasLimit = 10000,
+      gasPrice = 0.000001,
+      ttl = 28800,
     } = req.body;
+
+    // Validate chain ID
+    const chainIdValidation = validateChainId(chainId);
+    if (!chainIdValidation.valid) {
+      return res.status(400).json({
+        error: chainIdValidation.error,
+        details: chainIdValidation.details,
+      });
+    }
 
     // Validate required fields
     if (
       !account ||
       !tokenInAddress ||
       !tokenOutAddress ||
-      !slippage ||
       !(amountIn || amountOut)
     ) {
       return res.status(400).json({
         error: "Missing required fields",
         details:
-          "Account, tokenInAddress, tokenOutAddress, slippage, and (amountIn or amountOut) are required",
+          "Account, tokenInAddress, tokenOutAddress, and (amountIn or amountOut) are required",
       });
     }
 
@@ -70,10 +81,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Get token precision
-    const tokenInPrecision = getTokenPrecision(tokenInAddress);
-    const tokenOutPrecision = getTokenPrecision(tokenOutAddress);
-
     // Parse slippage tolerance
     let slippageTolerance;
     try {
@@ -95,6 +102,14 @@ router.post("/", async (req, res) => {
       });
     }
 
+    // Get token precision
+    const tokenInPrecision = getTokenPrecision(tokenInAddress);
+    const tokenOutPrecision = getTokenPrecision(tokenOutAddress);
+
+    console.log(
+      `Using precision for ${tokenInAddress}: ${tokenInPrecision}, ${tokenOutAddress}: ${tokenOutPrecision}`
+    );
+
     // Constants
     const ONE = new BigNumber(1);
     const FEE = new BigNumber("0.003"); // 0.3% fee
@@ -103,28 +118,42 @@ router.post("/", async (req, res) => {
     // 1. Fetch account guard
     const accountDetailsCmd = Pact.builder
       .execution(`(coin.details "${account}")`)
-      .setMeta({ chainId: ensureChainIdString(chainId), sender: account })
+      .setMeta({
+        chainId: ensureChainIdString(chainId),
+        sender: account,
+        gasLimit: 1000,
+        gasPrice: 0.000001,
+        ttl: 600,
+        creationTime: creationTime(),
+      })
       .setNetworkId(KADENA_NETWORK_ID)
       .createTransaction();
 
-    // Fetch account details
+    let accountDetails;
+    try {
+      accountDetails = await pactClient.local(accountDetailsCmd, {
+        preflight: false,
+        signatureVerification: false,
+      });
 
-    const accountDetailsData = await pactClient.local(accountDetailsCmd, {
-      preflight: false,
-      signatureVerification: false,
-    });
-
-    if (
-      accountDetailsData?.result?.status !== "success" ||
-      !accountDetailsData.result.data?.guard
-    ) {
-      return res.status(404).json({
-        error: "Account not found",
-        details: "Could not retrieve account details from blockchain",
+      if (
+        accountDetails?.result?.status !== "success" ||
+        !accountDetails.result.data?.guard
+      ) {
+        return res.status(404).json({
+          error: "Account not found",
+          details: "Could not retrieve account details from blockchain",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching account details:", error);
+      return res.status(500).json({
+        error: "Failed to retrieve account details",
+        details: error.message,
       });
     }
 
-    const userGuard = accountDetailsData.result.data.guard;
+    const userGuard = accountDetails.result.data.guard;
 
     // 2. Fetch reserves
     const reservesCmd = Pact.builder
@@ -135,24 +164,40 @@ router.post("/", async (req, res) => {
                 (reserveB (reserve-for p ${tokenOutAddress}))) 
           [reserveA reserveB])`
       )
-      .setMeta({ chainId: ensureChainIdString(chainId) })
+      .setMeta({
+        chainId: ensureChainIdString(chainId),
+        gasLimit: 1000,
+        gasPrice: 0.000001,
+        ttl: 600,
+        creationTime: creationTime(),
+      })
       .setNetworkId(KADENA_NETWORK_ID)
       .createTransaction();
 
-    const reservesData = await pactClient.local(reservesCmd, {
-      preflight: false,
-      signatureVerification: false,
-    });
+    let reservesData;
+    try {
+      reservesData = await pactClient.local(reservesCmd, {
+        preflight: false,
+        signatureVerification: false,
+      });
 
-    // Validate reserve data
-    if (
-      reservesData?.result?.status !== "success" ||
-      !Array.isArray(reservesData.result.data) ||
-      reservesData.result.data.length < 2
-    ) {
-      return res.status(404).json({
-        error: "Liquidity pool not found",
-        details: "Could not find a valid trading pair for the provided tokens",
+      // Validate reserve data
+      if (
+        reservesData?.result?.status !== "success" ||
+        !Array.isArray(reservesData.result.data) ||
+        reservesData.result.data.length < 2
+      ) {
+        return res.status(404).json({
+          error: "Liquidity pool not found",
+          details:
+            "Could not find a valid trading pair for the provided tokens",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching reserves:", error);
+      return res.status(500).json({
+        error: "Failed to retrieve pool reserves",
+        details: error.message,
       });
     }
 
@@ -169,6 +214,7 @@ router.post("/", async (req, res) => {
         typeof reserve1 === "object" ? reserve1.decimal || 0 : reserve1 || 0
       );
     } catch (error) {
+      console.error("Error parsing reserves:", error);
       return res.status(500).json({
         error: "Failed to parse reserves",
         details: error.message,
@@ -192,6 +238,8 @@ router.post("/", async (req, res) => {
     try {
       if (isExactIn) {
         token0AmountBn = amount;
+
+        // Calculate amountOut based on input amount with fee
         const amountInWithFee = token0AmountBn.times(ONE.minus(FEE));
         const numerator = amountInWithFee.times(reserveOut);
         const denominator = reserveIn.plus(amountInWithFee);
@@ -204,6 +252,8 @@ router.post("/", async (req, res) => {
         }
 
         token1AmountBn = numerator.dividedBy(denominator);
+
+        // Apply slippage to output amount (reduce by slippage %)
         token1AmountWithSlippageBn = token1AmountBn.times(
           ONE.minus(slippageTolerance)
         );
@@ -218,6 +268,7 @@ router.post("/", async (req, res) => {
           });
         }
 
+        // Calculate amountIn based on fixed output amount
         const numerator = reserveIn.times(token1AmountBn);
         const denominator = reserveOut
           .minus(token1AmountBn)
@@ -231,12 +282,15 @@ router.post("/", async (req, res) => {
         }
 
         token0AmountBn = numerator.dividedBy(denominator);
+
+        // Apply slippage to input amount (increase by slippage %)
         token0AmountWithSlippageBn = token0AmountBn.times(
           ONE.plus(slippageTolerance)
         );
         token1AmountWithSlippageBn = token1AmountBn;
       }
     } catch (error) {
+      console.error("Error calculating swap amounts:", error);
       return res.status(500).json({
         error: "Swap calculation failed",
         details: error.message,
@@ -261,12 +315,17 @@ router.post("/", async (req, res) => {
         `(use ${KADDEX_NAMESPACE}.exchange) 
          (at 'account (get-pair ${tokenInAddress} ${tokenOutAddress}))`
       )
-      .setMeta({ chainId: ensureChainIdString(chainId) })
+      .setMeta({
+        chainId: ensureChainIdString(chainId),
+        gasLimit: 1000,
+        gasPrice: 0.000001,
+        ttl: 600,
+        creationTime: creationTime(),
+      })
       .setNetworkId(KADENA_NETWORK_ID)
       .createTransaction();
 
     // Request the pair account identifier
-
     let pairAccount;
     try {
       const pairAccountData = await pactClient.local(pairAccountCmd, {
@@ -278,14 +337,14 @@ router.post("/", async (req, res) => {
         pairAccountData?.result?.status !== "success" ||
         !pairAccountData.result.data
       ) {
-        throw new Error("Failed to fetch pair account");
+        console.warn("Failed to fetch pair account, using fallback");
+        pairAccount = `${KADDEX_NAMESPACE}.exchange.exchange-swap-pair`;
+      } else {
+        pairAccount = pairAccountData.result.data;
       }
-
-      pairAccount = pairAccountData.result.data;
     } catch (error) {
-      console.error("Error fetching pair account:", error);
-      // Use fallback pair account if pair retrieval fails
-      pairAccount = `${KADDEX_NAMESPACE}.exchange-swap-pair`;
+      console.warn("Error fetching pair account, using fallback:", error);
+      pairAccount = `${KADDEX_NAMESPACE}.exchange.exchange-swap-pair`;
     }
 
     // 5. Construct the transaction code based on swap type
@@ -294,22 +353,20 @@ router.post("/", async (req, res) => {
           (read-decimal 'token0Amount) 
           (read-decimal 'token1AmountWithSlippage) 
           [${tokenInAddress} ${tokenOutAddress}] 
-          (read-string 'sender) 
-          (read-string 'receiver) 
+          "${account}" 
+          "${account}" 
           (read-keyset 'user-ks))`
       : `(${KADDEX_NAMESPACE}.exchange.swap-exact-out 
           (read-decimal 'token1Amount) 
           (read-decimal 'token0AmountWithSlippage) 
           [${tokenInAddress} ${tokenOutAddress}] 
-          (read-string 'sender) 
-          (read-string 'receiver) 
+          "${account}" 
+          "${account}" 
           (read-keyset 'user-ks))`;
 
     // 6. Prepare transaction data and environment
     const envData = {
       "user-ks": userGuard,
-      sender: account,
-      receiver: account,
       token0Amount: token0AmountStr,
       token1Amount: token1AmountStr,
       token0AmountWithSlippage: token0AmountWithSlippageStr,
@@ -320,9 +377,9 @@ router.post("/", async (req, res) => {
     const txMeta = {
       chainId: ensureChainIdString(chainId),
       sender: account,
-      gasLimit: 10000,
-      gasPrice: 0.000001,
-      ttl: 28800,
+      gasLimit: parseInt(gasLimit, 10),
+      gasPrice: parseFloat(gasPrice),
+      ttl: parseInt(ttl, 10),
       creationTime: creationTime(),
     };
 
@@ -331,8 +388,22 @@ router.post("/", async (req, res) => {
       ? token0AmountStr
       : token0AmountWithSlippageStr;
 
-    // 7. Create transaction
+    // 7. Create transaction with proper capabilities
     try {
+      // Create capabilities with the correct Kadena format
+      const transferAmount = parseFloat(transferAmountStr);
+      const capabilities = [
+        {
+          name: "coin.GAS",
+          args: [],
+        },
+        {
+          name: `${tokenInAddress}.TRANSFER`,
+          args: [account, pairAccount, transferAmount],
+        },
+      ];
+
+      // Create transaction command
       const pactCommand = {
         networkId: KADENA_NETWORK_ID,
         payload: {
@@ -345,18 +416,7 @@ router.post("/", async (req, res) => {
           {
             pubKey: userGuard.keys[0],
             scheme: "ED25519",
-            clist: [
-              {
-                name: "Gas",
-                args: [],
-                pred: "coin.GAS",
-              },
-              {
-                name: "Transfer",
-                pred: `${tokenInAddress}.TRANSFER`,
-                args: [account, pairAccount, { decimal: transferAmountStr }],
-              },
-            ],
+            clist: capabilities,
           },
         ],
         meta: txMeta,
@@ -368,7 +428,7 @@ router.post("/", async (req, res) => {
       // Generate transaction hash
       let transactionHash;
       try {
-        // Stringify the command first for consistent hashing
+        // Stringify the command for consistent hashing
         const cmdString = JSON.stringify(pactCommand);
         transactionHash = generateTransactionHash(cmdString);
       } catch (hashError) {
@@ -384,7 +444,7 @@ router.post("/", async (req, res) => {
       const preparedTx = {
         cmd: JSON.stringify(pactCommand),
         hash: transactionHash,
-        sigs: [null],
+        sigs: [null], // Client will replace with signature
       };
 
       // Calculate price impact
@@ -408,6 +468,7 @@ router.post("/", async (req, res) => {
         },
       });
     } catch (error) {
+      console.error("Error creating transaction:", error);
       return res.status(500).json({
         error: "Transaction preparation failed",
         details: error.message,
@@ -422,7 +483,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Update error handlers to remove NODE_ENV checks
 router.use((err, req, res, next) => {
   console.error("Unhandled error in swap routes:", err);
   res.status(500).json({

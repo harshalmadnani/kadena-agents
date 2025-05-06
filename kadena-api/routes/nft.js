@@ -66,7 +66,14 @@ const getAccountGuard = async (account, chainId) => {
     const pactClient = getClient(chainId);
     const accountDetailsCmd = Pact.builder
       .execution(`(coin.details "${account}")`)
-      .setMeta({ chainId: ensureChainIdString(chainId), sender: account })
+      .setMeta({
+        chainId: ensureChainIdString(chainId),
+        sender: account,
+        gasLimit: 1000,
+        gasPrice: 0.000001,
+        ttl: 600,
+        creationTime: creationTime(),
+      })
       .setNetworkId(KADENA_NETWORK_ID)
       .createTransaction();
 
@@ -84,6 +91,7 @@ const getAccountGuard = async (account, chainId) => {
       guard: accountDetailsData.result.data.guard,
     };
   } catch (error) {
+    console.error(`Error fetching guard for account ${account}:`, error);
     return {
       success: false,
       error: "Account not found",
@@ -283,31 +291,26 @@ router.post("/launch", async (req, res) => {
       // Define capabilities
       const capabilities = [
         {
-          name: "Gas",
+          name: "coin.GAS",
           args: [],
-          pred: "coin.GAS",
         },
         {
-          name: "Create Token",
-          pred: "marmalade-v2.ledger.CREATE-TOKEN",
+          name: "marmalade-v2.ledger.CREATE-TOKEN",
           args: [tokenId, precision, uri, guard],
         },
         {
-          name: "Mint",
-          pred: "marmalade-v2.ledger.MINT",
-          args: [tokenId, mintTo, { decimal: "1.0" }],
+          name: "marmalade-v2.ledger.MINT",
+          args: [tokenId, mintTo, 1.0],
         },
         {
-          name: "Enforce Collection",
-          pred: "marmalade-v2.collection-policy-v1.TOKEN-COLLECTION",
+          name: "marmalade-v2.collection-policy-v1.TOKEN-COLLECTION",
           args: [collectionId, tokenId],
         },
       ];
 
       if (policy.includes("ROYALTY")) {
         capabilities.push({
-          name: "Enforce Royalty",
-          pred: "marmalade-v2.royalty-policy-v1.ENFORCE-ROYALTY",
+          name: "marmalade-v2.royalty-policy-v1.ENFORCE-ROYALTY",
           args: [tokenId],
         });
       }
@@ -496,13 +499,11 @@ router.post("/collection", async (req, res) => {
       // Define capabilities
       const capabilities = [
         {
-          name: "Gas",
+          name: "coin.GAS",
           args: [],
-          pred: "coin.GAS",
         },
         {
-          name: "Create Collection",
-          pred: "marmalade-v2.collection-policy-v1.COLLECTION-CREATE",
+          name: "marmalade-v2.collection-policy-v1.COLLECTION-CREATE",
           args: [collectionId],
         },
       ];

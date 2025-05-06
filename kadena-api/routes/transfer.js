@@ -6,6 +6,7 @@ const { Pact } = require("@kadena/client");
 const {
   getClient,
   ensureChainIdString,
+  validateChainId,
   getTokenPrecision,
   reduceBalance,
   generateTransactionHash,
@@ -36,6 +37,15 @@ router.post("/", async (req, res) => {
         error: "Missing required parameters",
         details:
           "tokenAddress, sender, receiver, amount, and chainId are required",
+      });
+    }
+
+    // Validate chain ID
+    const chainIdValidation = validateChainId(chainId);
+    if (!chainIdValidation.valid) {
+      return res.status(400).json({
+        error: chainIdValidation.error,
+        details: chainIdValidation.details,
       });
     }
 
@@ -74,96 +84,121 @@ router.post("/", async (req, res) => {
     // 4. Get token precision
     const tokenPrecision = getTokenPrecision(tokenAddress);
     const formattedAmount = reduceBalance(parsedAmount, tokenPrecision);
+    const numericAmount = parseFloat(formattedAmount);
 
     // 5. Fetch sender's guard
     const pactClient = getClient(chainId);
     const accountDetailsCmd = Pact.builder
       .execution(`(coin.details "${sender}")`)
-      .setMeta({ chainId: ensureChainIdString(chainId), sender: sender })
+      .setMeta({
+        chainId: ensureChainIdString(chainId),
+        sender: sender,
+        gasLimit: 1000,
+        gasPrice: 0.000001,
+        ttl: 600,
+        creationTime: creationTime(),
+      })
       .setNetworkId(KADENA_NETWORK_ID)
       .createTransaction();
 
-    const accountDetailsData = await pactClient.local(accountDetailsCmd, {
-      preflight: false,
-      signatureVerification: false,
-    });
+    let accountDetails;
+    try {
+      accountDetails = await pactClient.local(accountDetailsCmd, {
+        preflight: false,
+        signatureVerification: false,
+      });
 
-    if (
-      accountDetailsData?.result?.status !== "success" ||
-      !accountDetailsData.result.data?.guard
-    ) {
-      return res.status(404).json({
-        error: "Account not found",
-        details: "Could not retrieve sender account details from blockchain",
+      if (
+        accountDetails?.result?.status !== "success" ||
+        !accountDetails.result.data?.guard
+      ) {
+        return res.status(404).json({
+          error: "Account not found",
+          details: "Could not retrieve sender account details from blockchain",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching account details:", error);
+      return res.status(500).json({
+        error: "Failed to retrieve account details",
+        details: error.message,
       });
     }
 
-    const userGuard = accountDetailsData.result.data.guard;
+    const userGuard = accountDetails.result.data.guard;
 
     // 6. Prepare transaction metadata
     const txMeta = {
       creationTime: creationTime(),
-      ttl,
-      gasLimit,
-      gasPrice,
+      ttl: parseInt(ttl, 10),
+      gasLimit: parseInt(gasLimit, 10),
+      gasPrice: parseFloat(gasPrice),
       chainId: ensureChainIdString(chainId),
       sender,
       ...meta,
     };
 
     // 7. Create transaction
-    let cmd;
     try {
+      // Define the correct capabilities format
+      const capabilities = [
+        {
+          name: "coin.GAS",
+          args: [],
+        },
+      ];
+
+      // Add the appropriate transfer capability
       if (tokenAddress === "coin") {
-        // Native KDA transfer
-        cmd = Pact.builder
-          .execution(
-            Pact.modules.coin["transfer"](sender, receiver, {
-              decimal: formattedAmount,
-            })
-          )
-          .setMeta(txMeta)
-          .setNetworkId(KADENA_NETWORK_ID)
-          .addSigner({ pubKey: userGuard.keys[0] }, (withCap) => [
-            withCap(Pact.lang.mkCap("Gas", "Pay gas", "coin.GAS", [])),
-            withCap(
-              Pact.lang.mkCap(
-                "Transfer",
-                "Capability to transfer funds",
-                "coin.TRANSFER",
-                [sender, receiver, { decimal: formattedAmount }]
-              )
-            ),
-          ])
-          .createTransaction();
+        capabilities.push({
+          name: "coin.TRANSFER",
+          args: [sender, receiver, numericAmount],
+        });
       } else {
-        // Fungible token transfer (using fungible-v2 standard)
-        cmd = Pact.builder
-          .execution(
-            `(${tokenAddress}.transfer "${sender}" "${receiver}" (read-decimal "amount"))`
-          )
-          .addData({ amount: { decimal: formattedAmount } })
-          .setMeta(txMeta)
-          .setNetworkId(KADENA_NETWORK_ID)
-          .addSigner({ pubKey: userGuard.keys[0] }, (withCap) => [
-            withCap(Pact.lang.mkCap("Gas", "Pay gas", "coin.GAS", [])),
-            withCap(
-              Pact.lang.mkCap(
-                "Transfer",
-                "Capability to transfer tokens",
-                `${tokenAddress}.TRANSFER`,
-                [sender, receiver, { decimal: formattedAmount }]
-              )
-            ),
-          ])
-          .createTransaction();
+        capabilities.push({
+          name: `${tokenAddress}.TRANSFER`,
+          args: [sender, receiver, numericAmount],
+        });
       }
 
-      // Calculate the transaction hash
+      // Build the transaction command
+      let pactCode;
+      const envData = {};
+
+      if (tokenAddress === "coin") {
+        // Native KDA transfer
+        pactCode = `(coin.transfer "${sender}" "${receiver}" ${numericAmount})`;
+      } else {
+        // Fungible token transfer using fungible-v2 standard
+        pactCode = `(${tokenAddress}.transfer "${sender}" "${receiver}" ${numericAmount})`;
+      }
+
+      // Create the transaction command
+      const pactCommand = {
+        networkId: KADENA_NETWORK_ID,
+        payload: {
+          exec: {
+            data: envData,
+            code: pactCode,
+          },
+        },
+        signers: [
+          {
+            pubKey: userGuard.keys[0],
+            scheme: "ED25519",
+            clist: capabilities,
+          },
+        ],
+        meta: txMeta,
+        nonce: `transfer:${Date.now()}:${Math.random()
+          .toString(36)
+          .substring(2, 15)}`,
+      };
+
+      // Generate transaction hash
       let transactionHash;
       try {
-        // Stringify the command first for consistent hashing
-        const cmdString = JSON.stringify(cmd);
+        const cmdString = JSON.stringify(pactCommand);
         transactionHash = generateTransactionHash(cmdString);
       } catch (hashError) {
         console.error("Failed to generate transaction hash:", hashError);
@@ -174,21 +209,21 @@ router.post("/", async (req, res) => {
         });
       }
 
-      // 8. Return the transaction and metadata
+      // Return the transaction and metadata
       return res.status(200).json({
         transaction: {
-          cmd: JSON.stringify(cmd),
+          cmd: JSON.stringify(pactCommand),
           hash: transactionHash,
-          sigs: [null],
+          sigs: [null], // Client will replace with signature
         },
         metadata: {
           sender,
           receiver,
-          amount: parsedAmount.toNumber(),
+          amount: numericAmount,
           tokenAddress,
           chainId,
           networkId: KADENA_NETWORK_ID,
-          estimatedGas: gasLimit * gasPrice,
+          estimatedGas: txMeta.gasLimit * txMeta.gasPrice,
           formattedAmount,
         },
       });
