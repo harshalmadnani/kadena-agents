@@ -140,6 +140,21 @@ router.post("/", async (req, res) => {
 
     // 7. Create transaction
     try {
+      // Build the transaction command
+      let pactCode;
+      const envData = { amount: formattedAmount };
+
+      if (tokenAddress === "coin") {
+        // Native KDA transfer
+        pactCode = `(coin.transfer "${sender}" "${receiver}" (read-decimal 'amount))`;
+      } else {
+        // Fungible token transfer using fungible-v2 standard
+        pactCode = `(${tokenAddress}.transfer "${sender}" "${receiver}" (read-decimal 'amount))`;
+      }
+
+      // Use decimal object for TRANSFER capability
+      const transferAmount = { decimal: formattedAmount };
+
       // Define the correct capabilities format
       const capabilities = [
         {
@@ -152,28 +167,16 @@ router.post("/", async (req, res) => {
       if (tokenAddress === "coin") {
         capabilities.push({
           name: "coin.TRANSFER",
-          args: [sender, receiver, numericAmount],
+          args: [sender, receiver, transferAmount],
         });
       } else {
         capabilities.push({
           name: `${tokenAddress}.TRANSFER`,
-          args: [sender, receiver, numericAmount],
+          args: [sender, receiver, transferAmount],
         });
       }
 
       // Build the transaction command
-      let pactCode;
-      const envData = {};
-
-      if (tokenAddress === "coin") {
-        // Native KDA transfer
-        pactCode = `(coin.transfer "${sender}" "${receiver}" ${numericAmount})`;
-      } else {
-        // Fungible token transfer using fungible-v2 standard
-        pactCode = `(${tokenAddress}.transfer "${sender}" "${receiver}" ${numericAmount})`;
-      }
-
-      // Create the transaction command
       const pactCommand = {
         networkId: KADENA_NETWORK_ID,
         payload: {
