@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { createClient } from '@kadena/client';
-import { chainId, networkId, rpcUrl } from '../services/magic';
-import './WalletInfo.css';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { createClient } from "@kadena/client";
+import "./WalletInfo.css";
 
 const WalletInfo: React.FC = () => {
   const { user } = useAuth();
-  const [balance, setBalance] = useState<string>('0.0');
+  const [balance, setBalance] = useState<string>("0.0");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,10 +18,14 @@ const WalletInfo: React.FC = () => {
 
       try {
         setIsLoading(true);
+        // Use mainnet01, chain ID 2 for fetching KDA balance
+        const networkId = "mainnet01";
+        const chainId = "2";
+        const rpcUrl = `https://api.chainweb.com/chainweb/0.0/${networkId}/chain/${chainId}/pact`;
         const client = createClient(rpcUrl);
-        
+
         const accountName = user.accountName;
-        
+
         // Create a Pact query to get balance
         const cmd = {
           pactCode: `(coin.get-balance "${accountName}")`,
@@ -35,17 +38,33 @@ const WalletInfo: React.FC = () => {
           },
           networkId,
         };
-        
+
         const response = await client.local(cmd);
-        
-        if (response.result.status === 'success') {
-          setBalance(response.result.data);
+
+        // Validate response
+        if (!response || !response.result) {
+          throw new Error("Invalid response from Kadena API");
+        }
+
+        if (
+          response.result.status === "success" &&
+          response.result.data !== undefined
+        ) {
+          setBalance(response.result.data.toString());
+          setError(null);
+        } else if (response.result.status === "failure") {
+          const errorMessage =
+            response.result.error?.message || "Unknown error";
+          console.error("Balance fetch failed:", response.result.error);
+          setError(`Failed to fetch balance: ${errorMessage}`);
         } else {
-          setError('Failed to fetch balance');
+          setError("Unexpected response from Kadena API");
         }
       } catch (err) {
-        console.error('Error fetching balance:', err);
-        setError('Failed to fetch balance');
+        console.error("Error fetching balance:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch balance"
+        );
       } finally {
         setIsLoading(false);
       }
@@ -81,13 +100,8 @@ const WalletInfo: React.FC = () => {
           )}
         </div>
       </div>
-      <div className="wallet-actions">
-        <button className="wallet-button" onClick={() => window.open('https://faucet.testnet.chainweb.com', '_blank')}>
-          Get Test KDA
-        </button>
-      </div>
     </div>
   );
 };
 
-export default WalletInfo; 
+export default WalletInfo;

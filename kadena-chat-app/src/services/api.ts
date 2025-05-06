@@ -3,7 +3,6 @@ import axios from "axios";
 // Create an axios instance with default configuration
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || "https://k-agent.onrender.com",
-  timeout: 30000, // 30 seconds timeout
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
