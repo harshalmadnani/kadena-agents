@@ -17,6 +17,12 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface UserContext {
+  accountName: string;
+  publicKey: string;
+  chainId: string;
+}
+
 export interface ChatQuery {
   query: string;
   history: string[];
@@ -53,6 +59,9 @@ export interface ChatResponse {
   history: string[];
 }
 
+// Maintain persistent chat history
+let chatHistory: string[] = [];
+
 export const chatApi = {
   // Health check endpoint
   healthCheck: async (): Promise<{ status: string }> => {
@@ -68,9 +77,20 @@ export const chatApi = {
   // Process a natural language query
   sendQuery: async (queryData: ChatQuery): Promise<ChatResponse> => {
     try {
-      console.log("Sending query:", queryData);
-      const response = await api.post("/query", queryData);
+      // Create the request payload with current history
+      const requestPayload = {
+        ...queryData,
+        history: chatHistory,
+      };
+
+      console.log("Sending query:", requestPayload);
+      const response = await api.post("/query", requestPayload);
       console.log("API Response:", response);
+
+      if (response.data.response) {
+        chatHistory = response.data.history;
+      }
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {

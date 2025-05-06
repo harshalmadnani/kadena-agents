@@ -1,16 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { createClient } from "@kadena/client";
+import { chainId } from "../services/magic";
+import { getAllBalances } from "../utils/transactions";
+import { tokens } from "../utils/tokens";
 import "./WalletInfo.css";
+
+interface TokenBalance {
+  symbol: string;
+  balance: number;
+}
 
 const WalletInfo: React.FC = () => {
   const { user } = useAuth();
-  const [balance, setBalance] = useState<string>("0.0");
+  const [balances, setBalances] = useState<TokenBalance[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [copiedText, setCopiedText] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchBalance = async () => {
+    const fetchBalances = async () => {
       if (!user?.accountName) {
         setIsLoading(false);
         return;
@@ -18,85 +26,91 @@ const WalletInfo: React.FC = () => {
 
       try {
         setIsLoading(true);
-        // Use mainnet01, chain ID 2 for fetching KDA balance
-        const networkId = "mainnet01";
-        const chainId = "2";
-        const rpcUrl = `https://api.chainweb.com/chainweb/0.0/${networkId}/chain/${chainId}/pact`;
-        const client = createClient(rpcUrl);
-
-        const accountName = user.accountName;
-
-        // Create a Pact query to get balance
-        const cmd = {
-          pactCode: `(coin.get-balance "${accountName}")`,
-          meta: {
-            chainId,
-            sender: accountName,
-            gasLimit: 150000,
-            gasPrice: 0.00000001,
-            ttl: 600,
-          },
-          networkId,
-        };
-
-        const response = await client.local(cmd);
-
-        // Validate response
-        if (!response || !response.result) {
-          throw new Error("Invalid response from Kadena API");
-        }
-
-        if (
-          response.result.status === "success" &&
-          response.result.data !== undefined
-        ) {
-          setBalance(response.result.data.toString());
-          setError(null);
-        } else if (response.result.status === "failure") {
-          const errorMessage =
-            response.result.error?.message || "Unknown error";
-          console.error("Balance fetch failed:", response.result.error);
-          setError(`Failed to fetch balance: ${errorMessage}`);
-        } else {
-          setError("Unexpected response from Kadena API");
-        }
+        const tokenBalances = await getAllBalances(user.accountName, chainId);
+        setBalances(tokenBalances);
+        setError(null);
       } catch (err) {
-        console.error("Error fetching balance:", err);
+        console.error("Error fetching balances:", err);
         setError(
-          err instanceof Error ? err.message : "Failed to fetch balance"
+          err instanceof Error ? err.message : "Failed to fetch balances"
         );
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchBalance();
+    fetchBalances();
   }, [user?.accountName]);
 
-  if (!user?.accountName) {
+  const copyToClipboard = async (text: string, type: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedText(type);
+      setTimeout(() => setCopiedText(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  const getTokenName = (symbol: string): string => {
+    const token = Object.values(tokens).find((t) => t.symbol === symbol);
+    return token?.name || symbol;
+  };
+
+  const accountName = user?.accountName;
+  const publicKey = user?.publicKey;
+
+  if (!accountName || !publicKey) {
     return null;
   }
 
   return (
     <div className="wallet-info">
-      <h3>Kadena Wallet</h3>
+      <h3>
+        <span>Kadena Wallet</span>
+        {isLoading && <span className="loading-indicator">Refreshing...</span>}
+      </h3>
+
       <div className="wallet-details">
-        <div className="wallet-item">
-          <span className="label">Account:</span>
-          <span className="value account-value">{user.accountName}</span>
+        <div className="account-section">
+          <div className="wallet-item">
+            <span className="label">Account</span>
+            <div className="value account-value">
+              <span>{accountName}</span>
+            </div>
+          </div>
+          <div className="wallet-item">
+            <span className="label">Public Key</span>
+            <div className="value key-value">
+              <span>{publicKey}</span>
+            </div>
+          </div>
         </div>
+
         <div className="wallet-item">
-          <span className="label">Public Key:</span>
-          <span className="value key-value">{user.publicKey}</span>
-        </div>
-        <div className="wallet-item">
-          <span className="label">Balance:</span>
+          <span className="label">Token Balances</span>
           {isLoading ? (
-            <span className="value">Loading...</span>
+            <div className="loading-indicator">Loading balances...</div>
           ) : error ? (
-            <span className="value error">{error}</span>
+            <div className="value error">{error}</div>
+          ) : balances.length === 0 ? (
+            <div className="value">No tokens found</div>
           ) : (
-            <span className="value balance-value">{balance} KDA</span>
+            <div className="balances-list">
+              {balances.map((balance) => (
+                <div key={balance.symbol} className="balance-item">
+                  <div className="token-avatar">
+                    {balance.symbol.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="balance-value">
+                    <span>{balance.balance}</span>
+                    <span className="token-symbol">
+                      {balance.symbol} • {getTokenName(balance.symbol)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>

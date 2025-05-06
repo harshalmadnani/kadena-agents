@@ -9,11 +9,18 @@ import {
 import walletService, { SignAndSubmitResult } from "../services/walletService";
 import WalletInfo from "./WalletInfo";
 import "./Chat.css";
+import { getAllBalances } from "../utils/transactions";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   isMarkdown?: boolean;
+}
+
+interface UserContext {
+  accountName: string;
+  publicKey: string;
+  chainId: string;
 }
 
 // Define transaction response interface
@@ -31,6 +38,26 @@ interface TransactionResponseData {
   };
   [key: string]: any;
 }
+
+const SendButton = () => (
+  <span
+    style={{
+      fontSize: "14px",
+      fontWeight: 500,
+      color: "#000000",
+    }}
+  >
+    Send
+  </span>
+);
+
+const LoadingDots = () => (
+  <div className="loading-dots">
+    <div className="dot"></div>
+    <div className="dot"></div>
+    <div className="dot"></div>
+  </div>
+);
 
 const Chat: React.FC = () => {
   const { user, logout } = useAuth();
@@ -58,24 +85,24 @@ const Chat: React.FC = () => {
     // Check if it's a transaction response
     if (response.transaction) {
       const txResponse = response as TransactionResponseData;
-      let formattedResponse = "Transaction Generated:\n\n";
+      let formattedResponse = `## Transaction Generated\n`;
 
       if (txResponse.quote) {
-        formattedResponse += `Exchange Details:\n`;
-        formattedResponse += `- Input Amount: ${txResponse.quote.expectedIn}\n`;
-        formattedResponse += `- Output Amount: ${txResponse.quote.expectedOut}\n`;
-        formattedResponse += `- Price Impact: ${txResponse.quote.priceImpact}%\n`;
-        formattedResponse += `- Slippage Tolerance: ${
+        formattedResponse += `### Exchange Details\n`;
+        formattedResponse += `- **Input Amount:** ${txResponse.quote.expectedIn}\n`;
+        formattedResponse += `- **Output Amount:** ${txResponse.quote.expectedOut}\n`;
+        formattedResponse += `- **Price Impact:** ${txResponse.quote.priceImpact}%\n`;
+        formattedResponse += `- **Slippage Tolerance:** ${
           txResponse.quote.slippage * 100
-        }%\n\n`;
+        }%\n`;
       }
 
-      formattedResponse += `Transaction Hash: ${txResponse.transaction.hash}\n`;
-      formattedResponse += `Chain ID: ${
+      formattedResponse += `### Transaction Details\n`;
+      formattedResponse += `- **Hash:** \`${txResponse.transaction.hash}\`\n`;
+      formattedResponse += `- **Chain ID:** ${
         JSON.parse(txResponse.transaction.cmd).meta?.chainId || "Unknown"
-      }\n\n`;
-
-      formattedResponse += `Do you want to sign and submit this transaction?`;
+      }\n`;
+      formattedResponse += `**Do you want to sign and submit this transaction?**`;
 
       return formattedResponse;
     }
@@ -138,11 +165,19 @@ const Chat: React.FC = () => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || !user?.accountName) return;
+
+    // Create context string
+    const contextString = `[Using account: ${user.accountName}, public key: ${
+      user.publicKey || "not available"
+    }, chain: 2]`;
+
+    // Combine context with user query
+    const enhancedQuery = `${inputValue}\n${contextString}`;
 
     const userMessage: Message = {
       role: "user",
-      content: inputValue,
+      content: inputValue, // Show original message to user
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -154,26 +189,20 @@ const Chat: React.FC = () => {
 
     try {
       const response = await chatApi.sendQuery({
-        query: userMessage.content,
+        query: enhancedQuery,
         history: [],
       });
 
-      // Convert response to string based on its type
       let responseContent: string;
-      let isMarkdown = false;
+      let isMarkdown = true; // Default to true for all assistant messages
 
       if (typeof response.response === "string") {
         responseContent = response.response;
-        isMarkdown = true; // Set to true for string responses (non-transactions)
       } else if (response.response && "transaction" in response.response) {
-        // Store transaction for later signing
         setPendingTransaction(response.response as TransactionResponse);
         responseContent = formatTransactionResponse(response.response);
-        isMarkdown = false; // No markdown for transactions
       } else {
-        // Format object responses based on their structure
         responseContent = formatTransactionResponse(response.response);
-        isMarkdown = false;
       }
 
       const assistantMessage: Message = {
@@ -190,8 +219,8 @@ const Chat: React.FC = () => {
 
       const assistantMessage: Message = {
         role: "assistant",
-        content: errorMessage,
-        isMarkdown: false,
+        content: `# ❌ Error\n\n${errorMessage}`,
+        isMarkdown: true,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -218,14 +247,16 @@ const Chat: React.FC = () => {
         role: "assistant",
         content:
           result.status === "success"
-            ? `Transaction submitted successfully!\n\nRequest Key: ${result.requestKey}\n\nYou can track this transaction on the blockchain explorer.`
-            : `Transaction failed: ${result.errorMessage || "Unknown error"}`,
+            ? `## ✅ Transaction Submitted Successfully!\n` +
+              `**Request Key:** \`${result.requestKey}\`\n` +
+              `You can track this transaction on the blockchain explorer.`
+            : `## ❌ Transaction Failed\n` +
+              `${result.errorMessage || "Unknown error"}\n` +
+              `Please try again or contact support if the issue persists.`,
         isMarkdown: true,
       };
 
       setMessages((prev) => [...prev, resultMessage]);
-
-      // Clear the pending transaction after processing
       setPendingTransaction(null);
     } catch (error) {
       const errorMessage =
@@ -234,7 +265,10 @@ const Chat: React.FC = () => {
 
       const errorResultMessage: Message = {
         role: "assistant",
-        content: `Transaction signing failed: ${errorMessage}`,
+        content:
+          `## ❌ Transaction Signing Failed\n` +
+          `${errorMessage}\n` +
+          `Please check your wallet connection and try again.`,
         isMarkdown: true,
       };
 
@@ -295,13 +329,11 @@ const Chat: React.FC = () => {
       </div>
 
       <div className="main-content">
-        <div
-          className={`messages-container ${showWallet ? "with-wallet" : ""}`}
-        >
+        <div className="messages-container">
           {messages.length === 0 ? (
             <div className="empty-state">
-              <h2>Welcome to Kadena Chat</h2>
-              <p>Ask anything about Kadena blockchain!</p>
+              <h2>Welcome to Agent K</h2>
+              <p>The supreme Kadena being</p>
             </div>
           ) : (
             messages.map((message, index) => (
@@ -352,7 +384,9 @@ const Chat: React.FC = () => {
           {isSubmittingTx && (
             <div className="message assistant-message">
               <div className="message-content loading">
-                Signing and submitting transaction...
+                <span style={{ marginRight: "0.5rem" }}>
+                  <b>Signing and submitting transaction</b>
+                </span>
                 <div className="loading-dot"></div>
                 <div className="loading-dot"></div>
                 <div className="loading-dot"></div>
@@ -364,28 +398,36 @@ const Chat: React.FC = () => {
         </div>
 
         {showWallet && (
-          <div className="wallet-sidebar">
-            <WalletInfo />
+          <div className="wallet-overlay">
+            <div className="wallet-overlay-backdrop" onClick={toggleWallet} />
+            <div className="wallet-overlay-content">
+              <WalletInfo />
+              <button className="wallet-overlay-close" onClick={toggleWallet}>
+                Close
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      <form className="input-container" onSubmit={handleSendMessage}>
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Type your message here..."
-          disabled={isLoading || isSubmittingTx}
-        />
-        <button
-          type="submit"
-          className="send-button"
-          disabled={isLoading || isSubmittingTx || !inputValue.trim()}
-        >
-          {isLoading ? "Sending..." : "Send"}
-        </button>
-      </form>
+      <div className="input-container">
+        <form onSubmit={handleSendMessage}>
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Type your message here..."
+            disabled={isLoading || isSubmittingTx}
+          />
+          <button
+            type="submit"
+            className="send-button"
+            disabled={!inputValue.trim() || isLoading || isSubmittingTx}
+          >
+            {isLoading ? <LoadingDots /> : <SendButton />}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

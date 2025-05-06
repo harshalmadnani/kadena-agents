@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import './Login.css';
+import React, { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import "./Login.css";
 
 const Login: React.FC = () => {
-  const [email, setEmail] = useState<string>('');
+  const [email, setEmail] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const { login, loginWithSpireKey } = useAuth();
@@ -11,17 +11,17 @@ const Login: React.FC = () => {
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      setError('Please enter your email');
+      setError("Please enter your email");
       return;
     }
-    
+
     try {
       setIsLoading(true);
       setError(null);
       await login(email);
     } catch (err) {
-      console.error('Login error:', err);
-      setError('Login failed. Please try again.');
+      console.error("Login error:", err);
+      setError("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -33,8 +33,8 @@ const Login: React.FC = () => {
       setError(null);
       await loginWithSpireKey();
     } catch (err) {
-      console.error('SpireKey login error:', err);
-      setError('SpireKey login failed. Please try again.');
+      console.error("SpireKey login error:", err);
+      setError("SpireKey login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -43,11 +43,11 @@ const Login: React.FC = () => {
   return (
     <div className="login-container">
       <div className="login-card">
-        <h1>Welcome to Kadena Chat</h1>
+        <h1>Welcome to Agent K</h1>
         <p>Sign in to access your chat interface and wallet</p>
-        
+
         {error && <div className="error-message">{error}</div>}
-        
+
         <form onSubmit={handleEmailLogin} className="login-form">
           <div className="form-group">
             <label htmlFor="email">Email</label>
@@ -60,30 +60,30 @@ const Login: React.FC = () => {
               disabled={isLoading}
             />
           </div>
-          
-          <button 
-            type="submit" 
-            className="btn btn-primary" 
+
+          <button
+            type="submit"
+            className="btn btn-primary"
             disabled={isLoading}
           >
-            {isLoading ? 'Logging in...' : 'Login with Magic Link'}
+            {isLoading ? "Logging in..." : "Login with Magic Link"}
           </button>
         </form>
-        
+
         <div className="divider">
           <span>OR</span>
         </div>
-        
-        <button 
-          onClick={handleSpireKeyLogin} 
+
+        <button
+          onClick={handleSpireKeyLogin}
           className="btn btn-secondary"
           disabled={isLoading}
         >
-          {isLoading ? 'Logging in...' : 'Login with SpireKey'}
+          {isLoading ? "Logging in..." : "Login with SpireKey"}
         </button>
       </div>
     </div>
   );
 };
 
-export default Login; 
+export default Login;

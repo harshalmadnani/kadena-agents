@@ -81,9 +81,9 @@
 }
 
 .wallet-toggle:hover {
-  background-color: var(--primary-variant);
+  background-color: transparent;
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: none;
 }
 
 .logout-button {
@@ -113,12 +113,12 @@
 .messages-container {
   flex: 1;
   padding: 2rem;
-  padding-bottom: 120px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
   scroll-behavior: smooth;
+  padding-bottom: 120px !important;
 }
 
 .messages-container.with-wallet {
@@ -169,6 +169,11 @@
   position: relative;
 }
 
+.message:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+}
+
 @keyframes messageAppear {
   from {
     opacity: 0;
@@ -182,7 +187,11 @@
 
 .user-message {
   align-self: flex-end;
-  background-color: var(--primary);
+  background: linear-gradient(
+    145deg,
+    var(--primary) 0%,
+    var(--primary-variant) 100%
+  );
   color: var(--background);
   border-bottom-right-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -190,10 +199,15 @@
 
 .assistant-message {
   align-self: flex-start;
-  background-color: var(--surface);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
   color: var(--text-primary);
   border-bottom-left-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(5px);
 }
 
 .error-message {
@@ -233,17 +247,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 24px;
-  padding: 0.75rem 0;
+  height: 20px;
+  padding: 0.5rem 0;
   position: relative;
 }
 
 .loading-dot {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   background-color: var(--text-secondary);
-  margin: 0 3px;
+  margin: 0 2px;
   animation: pulse 1.5s infinite ease-in-out;
   opacity: 0.6;
 }
@@ -334,121 +348,105 @@
 }
 
 .input-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background: none;
-  border: none;
   position: fixed;
   left: 50%;
-  bottom: 2.5rem;
+  bottom: 2rem;
   transform: translateX(-50%);
+  padding: 0.75rem;
+  width: 90%;
+  max-width: 800px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
   z-index: 20;
+}
+
+.input-container form {
+  position: relative;
   width: 100%;
-  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.input-container input {
+  width: 100%;
+  padding: 0.875rem 3.5rem 0.875rem 1.25rem;
+  background: rgba(255, 255, 255, 0.07);
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  color: #fff;
+  transition: all 0.3s ease;
   box-shadow: none;
 }
 
-.input-bar {
-  display: flex;
-  align-items: center;
-  background: var(--surface);
-  border-radius: 999px;
-  box-shadow: 0 6px 32px rgba(0, 0, 0, 0.18), 0 1.5px 8px rgba(0, 0, 0, 0.1);
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
-  padding: 0.5rem 0.75rem 0.5rem 1.25rem;
-  min-width: 420px;
-  max-width: 700px;
-  width: 100%;
-  pointer-events: auto;
-}
-
-.input-bar input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: 1.08rem;
-  color: var(--text-primary);
-  padding: 0.7rem 0.5rem 0.7rem 0;
+.input-container input:focus {
   outline: none;
-  min-width: 120px;
-}
-
-.input-bar input::placeholder {
-  color: var(--text-secondary);
-  opacity: 1;
-}
-
-.input-bar .icon-btn {
-  background: none;
+  background: rgba(255, 255, 255, 0.1);
   border: none;
-  border-radius: 50%;
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 0.15rem;
-  color: var(--text-secondary);
-  font-size: 1.18rem;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  box-shadow: none;
 }
 
-.input-bar .icon-btn:hover {
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--text-primary);
-}
-
-.input-bar .voice-btn {
-  background: #fff;
-  color: #111;
-  border-radius: 50px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 1.1rem 0 0.7rem;
-  height: 42px;
-  margin-left: 0.3rem;
-  font-size: 1.08rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: none;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.input-bar .voice-btn .icon {
-  margin-right: 0.5rem;
-  font-size: 1.18rem;
+.input-container input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .send-button {
-  border-radius: 50%;
-  padding: 0.85rem 1rem;
-  margin-left: -3.5rem;
-  margin-right: 0.5rem;
-  min-width: 44px;
-  min-height: 44px;
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #ffffff;
+  border: none;
+  border-radius: 10px;
+  min-width: 60px;
+  height: 38px;
+  padding: 0 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .send-button:hover:not(:disabled) {
-  background-color: var(--primary-variant);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  background: #ffffff;
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.send-button:active:not(:disabled) {
+  transform: translateY(-50%) scale(0.95);
 }
 
 .send-button:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
-  opacity: 0.7;
-  transform: none;
-  box-shadow: none;
+  background: #ffffff;
+}
+
+.loading-dots {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.loading-dots .dot {
+  width: 3px;
+  height: 3px;
+  background: #000000;
+  border-radius: 50%;
+  animation: loadingDot 1.4s infinite ease-in-out;
+}
+
+.loading-dots .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots .dot:nth-child(3) {
+  animation-delay: 0.4s;
 }
 
 .transaction-actions {
@@ -502,127 +500,324 @@
 
 /* Markdown styling for messages */
 .markdown-content {
-  line-height: 1.6;
+  line-height: 1.4;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: inherit;
 }
 
 .markdown-content h1 {
-  font-size: 1.6rem;
-  font-weight: 600;
-  margin-top: 1.5rem;
-  margin-bottom: 1rem;
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
+  font-size: 1.5rem;
 }
 
 .markdown-content h2 {
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin-top: 1.3rem;
-  margin-bottom: 0.8rem;
-  color: var(--text-primary);
-  letter-spacing: -0.01em;
+  font-size: 1.25rem;
 }
 
 .markdown-content h3 {
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin-top: 1.1rem;
-  margin-bottom: 0.6rem;
-  color: var(--text-primary);
+  font-size: 1.125rem;
+}
+
+.markdown-content h4 {
+  font-size: 1rem;
 }
 
 .markdown-content p {
-  margin-bottom: 0.5rem;
-  line-height: 1.4;
+  margin: 0.5rem 0;
 }
 
-.markdown-content ul,
-.markdown-content ol {
-  margin-bottom: 0.5rem;
-  padding-left: 1rem;
+.markdown-content ul {
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0.5rem 0;
 }
 
 .markdown-content li {
-  margin-bottom: 0.2rem;
-  line-height: 1.4;
+  position: relative;
+  padding-left: 1.5rem;
+  margin: 0.25rem 0;
 }
 
-.markdown-content a {
-  color: var(--primary);
-  text-decoration: none;
-  border-bottom: 1px solid var(--primary);
-  transition: opacity 0.2s ease;
-}
-
-.markdown-content a:hover {
-  opacity: 0.8;
+.markdown-content li:before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
 }
 
 .markdown-content code {
-  font-family: "JetBrains Mono", monospace;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  font-family: "Menlo", "Monaco", "Courier New", monospace;
+  background: rgba(255, 255, 255, 0.1);
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
-  font-size: 0.9rem;
-}
-
-.markdown-content pre {
-  background-color: rgba(0, 0, 0, 0.3);
-  padding: 1.25rem;
-  border-radius: 8px;
-  overflow-x: auto;
-  margin: 1rem 0;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.markdown-content pre code {
-  background-color: transparent;
-  padding: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
-.markdown-content blockquote {
-  border-left: 3px solid var(--primary);
-  padding: 0.75rem 1rem;
-  margin: 1rem 0;
-  background-color: rgba(255, 255, 255, 0.05);
-  border-radius: 0 8px 8px 0;
-  color: var(--text-secondary);
-}
-
-.markdown-content img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 8px;
-  margin: 1rem 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  font-size: 0.9em;
+  color: inherit;
 }
 
 .markdown-content hr {
   border: none;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  margin: 1.5rem 0;
-}
-
-.markdown-content table {
-  width: 100%;
-  border-collapse: collapse;
   margin: 1rem 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  overflow: hidden;
 }
 
-.markdown-content table th,
-.markdown-content table td {
-  padding: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.markdown-content strong {
+  font-weight: 600;
+  color: inherit;
+}
+
+.message.assistant-message .markdown-content {
+  color: var(--text-primary);
+}
+
+.message.user-message .markdown-content {
+  color: var(--background);
+}
+
+@keyframes loadingDot {
+  0%,
+  100% {
+    transform: scale(0.3);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.wallet-toggle:hover,
+.logout-button:hover,
+.send-button:hover:not(:disabled),
+.confirm-button:hover,
+.cancel-button:hover {
+  background: #000 !important;
+  color: #fff !important;
+  border: 1px solid #fff !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.wallet-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 420px;
+  max-width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  display: flex;
+  flex-direction: row;
+  pointer-events: all;
+}
+
+.wallet-overlay-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1001;
+}
+
+.wallet-overlay-content {
+  position: relative;
+  z-index: 1002;
+  background: var(--surface);
+  border-radius: 0 0 0 20px;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.3);
+  padding: 2rem 1.5rem 2rem 1.5rem;
+  width: 850px;
+  max-width: 100vw;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: slideInSidebar 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInSidebar {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.wallet-overlay-close {
+  margin-top: 1.5rem;
+  background: var(--primary);
+  color: var(--background);
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.wallet-overlay-close:hover {
+  background: transparent;
+  color: #fff;
+  border: 1px solid #fff;
+}
+
+.wallet-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 420px;
+  max-width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  display: flex;
+  flex-direction: row;
+  pointer-events: all;
+}
+
+.wallet-sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1001;
+}
+
+.wallet-sidebar-content {
+  position: relative;
+  z-index: 1002;
+  background: linear-gradient(
+    145deg,
+    var(--surface) 0%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+  border-radius: 0 0 0 20px;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.3);
+  padding: 2rem 1.5rem 2rem 1.5rem;
+  width: 420px;
+  max-width: 100vw;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  animation: slideInSidebar 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInSidebar {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.wallet-sidebar-close {
+  margin-top: 1.5rem;
+  background: var(--primary);
+  color: var(--background);
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-end;
+}
+
+.wallet-sidebar-close:hover {
+  background: transparent;
+  color: #fff;
+  border: 1px solid #fff;
+}
+
+.copy-button {
+  background: var(--primary);
+  color: var(--background);
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  padding: 0.3rem 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 0.75rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+  display: inline-block;
+  height: auto;
+}
+
+.copy-button:hover {
+  background: transparent !important;
+  color: #fff !important;
+  border: 1px solid #fff !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.token-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.balance-item {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+  width: 100%;
+  backdrop-filter: blur(5px);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.balance-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.2rem;
+}
+
+.balance-value span {
   text-align: left;
 }
 
-.markdown-content table th {
-  background-color: rgba(255, 255, 255, 0.05);
-  font-weight: 600;
+.input-container input:active {
+  border: none;
 }
