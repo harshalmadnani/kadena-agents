@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Chat from './components/Chat';
+import Navbar from './components/Navbar';
+import AgentLauncher from './components/agent/AgentLauncher';
 import './App.css';
 
 // Protected route component
@@ -17,7 +19,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/login" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+    </>
+  );
 };
 
 // Public route component (accessible only when not logged in)
@@ -53,6 +59,14 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <Chat />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/agent" 
+          element={
+            <ProtectedRoute>
+              <AgentLauncher />
             </ProtectedRoute>
           } 
         />

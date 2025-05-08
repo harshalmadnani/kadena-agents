@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import {
   chatApi,
   SwapResponse,
@@ -10,6 +11,7 @@ import walletService, { SignAndSubmitResult } from "../services/walletService";
 import WalletInfo from "./WalletInfo";
 import "./Chat.css";
 import { getAllBalances } from "../utils/transactions";
+import ChatHeader from "./ChatHeader";
 
 interface Message {
   role: "user" | "assistant";
@@ -61,6 +63,7 @@ const LoadingDots = () => (
 
 const Chat: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -306,27 +309,14 @@ const Chat: React.FC = () => {
 
   return (
     <div className="chat-container">
-      <div className="chat-header">
-        <div className="user-info">
-          <div className="user-avatar">
-            {user?.email?.charAt(0).toUpperCase() || "U"}
-          </div>
-          <div className="user-details">
-            <div className="user-name">{user?.email || "User"}</div>
-            <div className="user-wallet">
-              {user?.accountName || "No wallet connected"}
-            </div>
-          </div>
-        </div>
-        <div className="header-actions">
-          <button className="wallet-toggle" onClick={toggleWallet}>
-            {showWallet ? "Hide Wallet" : "Show Wallet"}
-          </button>
-          <button className="logout-button" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
-      </div>
+      <ChatHeader
+        user={user}
+        showWallet={showWallet}
+        onToggleWallet={toggleWallet}
+        mainActionLabel="Launch Agent"
+        onMainAction={() => navigate('/agent')}
+        onLogout={handleLogout}
+      />
 
       <div className="main-content">
         <div className="messages-container">
