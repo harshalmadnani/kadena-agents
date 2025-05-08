@@ -319,7 +319,7 @@ async def process_query(request: QueryRequest):
     logger.info("Received query request")
     try:
         logger.info("Processing query with agent")
-        result = await run_kadena_agent_with_context(request.query, request.history)
+        result = run_kadena_agent_with_context(request.query, request.history)
         logger.info("Successfully processed query")
         return result
     except Exception as e:
