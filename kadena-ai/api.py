@@ -95,6 +95,10 @@ async def health_check():
 # Initialize OpenAI model
 model = ChatOpenAI(model="o4-mini")
 
+from typing import Dict, Any, Literal, Optional
+import requests
+from langchain.tools import BaseTool
+
 class KadenaTransactionTool(BaseTool):
     name: str = "kadena_transaction"
     description: str = """Generate unsigned transactions for Kadena blockchain operations.
@@ -132,13 +136,14 @@ class KadenaTransactionTool(BaseTool):
     
     For NFT minting:
     - endpoint: "nft/launch"
+    - name: NFT name
     - account: User's account (k:account format)
     - guard: Guard object with keys and pred
     - mintTo: Account to mint to (k:account format)
     - uri: IPFS URI or metadata link
     - collectionId: Collection ID
     - chainId: Chain ID (must be "2")
-    - Optional: precision, policy, royalties, royaltyRecipient, name, description
+    - Optional: precision, policy, royalties, royaltyRecipient, description
     
     For collection creation:
     - endpoint: "nft/collection"
@@ -160,12 +165,9 @@ class KadenaTransactionTool(BaseTool):
         Returns:
             Dict containing the unsigned transaction data or error information
         """
-        logger.info(f"Processing transaction request for endpoint: {endpoint}")
-        
         # Validate endpoint
         valid_endpoints = {'quote', 'transfer', 'swap', 'nft/launch', 'nft/collection'}
         if endpoint not in valid_endpoints:
-            logger.error(f"Invalid endpoint requested: {endpoint}")
             return {"error": f"Invalid endpoint. Must be one of: {valid_endpoints}"}
         
         # Validate required parameters based on endpoint
@@ -173,73 +175,60 @@ class KadenaTransactionTool(BaseTool):
             'quote': ['tokenInAddress', 'tokenOutAddress', 'chainId'],
             'transfer': ['tokenAddress', 'sender', 'receiver', 'amount', 'chainId'],
             'swap': ['tokenInAddress', 'tokenOutAddress', 'account', 'chainId'],
-            'nft/launch': ['account', 'guard', 'mintTo', 'uri', 'collectionId', 'chainId'],
+            'nft/launch': ['name', 'account', 'guard', 'mintTo', 'uri', 'collectionId', 'chainId'],
             'nft/collection': ['account', 'guard', 'name', 'chainId']
         }
         
         # Special validation for swap endpoint
         if endpoint == 'swap':
             if 'amountIn' in body and 'amountOut' in body:
-                logger.error("Both amountIn and amountOut specified for swap")
                 return {"error": "Cannot specify both amountIn and amountOut for swap"}
             if 'amountIn' not in body and 'amountOut' not in body:
-                logger.error("Neither amountIn nor amountOut specified for swap")
                 return {"error": "Must specify either amountIn or amountOut for swap"}
             
         # Special validation for quote endpoint
         if endpoint == 'quote':
             if 'amountIn' in body and 'amountOut' in body:
-                logger.error("Both amountIn and amountOut specified for quote")
                 return {"error": "Cannot specify both amountIn and amountOut for quote"}
             if 'amountIn' not in body and 'amountOut' not in body:
-                logger.error("Neither amountIn nor amountOut specified for quote")
                 return {"error": "Must specify either amountIn or amountOut for quote"}
         
         # Check required parameters
         missing_params = [param for param in required_params[endpoint] 
                          if param not in body]
         if missing_params:
-            logger.error(f"Missing required parameters for {endpoint}: {missing_params}")
             return {"error": f"Missing required parameters: {missing_params}"}
         
         # Validate chainId
         if int(body.get('chainId')) > 19 or int(body.get('chainId')) < 0:
-            logger.error(f"Invalid chainId provided: {body.get('chainId')}")
             return {"error": "Invalid chainId. Must be between 0 and 19"}
         
         # Make API request
         try:
-            logger.info(f"Making API request to {endpoint}")
             response = requests.post(
                 f"https://kadena-agents.onrender.com/{endpoint}",
                 json=body,
-                headers={'Content-Type': 'application/json', 'x-api-key': API_KEY}
+                headers={'Content-Type': 'application/json', 'x-api-key': 'Commune_dev1'}
             )
             
             # Handle specific error cases
             if response.status_code == 400:
                 error_data = response.json()
-                logger.error(f"Bad Request for {endpoint}: {error_data.get('error', 'Unknown error')}")
                 return {"error": f"Bad Request: {error_data.get('error', 'Unknown error')}"}
             elif response.status_code == 500:
                 error_data = response.json()
-                logger.error(f"Server Error for {endpoint}: {error_data.get('error', 'Unknown error')}")
                 return {"error": f"Server Error: {error_data.get('error', 'Unknown error')}"}
                 
             response.raise_for_status()
-            logger.info(f"Successfully processed {endpoint} request")
             return response.json()
             
         except requests.exceptions.RequestException as e:
             if hasattr(e, 'response') and e.response is not None:
                 try:
                     error_data = e.response.json()
-                    logger.error(f"API Error for {endpoint}: {error_data.get('error', str(e))}")
                     return {"error": f"API Error: {error_data.get('error', str(e))}"}
                 except ValueError:
-                    logger.error(f"API request failed for {endpoint}: {str(e)}")
                     return {"error": f"API request failed: {str(e)}"}
-            logger.error(f"API request failed for {endpoint}: {str(e)}")
             return {"error": f"API request failed: {str(e)}"}
     
     async def _arun(self, endpoint: Literal["transfer", "swap", "nft/launch", "nft/collection", "quote"], body: Dict[str, Any]) -> Dict[str, Any]:
@@ -267,14 +256,12 @@ class KadenaAnalysisTool(BaseTool):
         Returns:
             Dict containing the analysis response or error information
         """
-        logger.info("Processing analysis request")
         try:
-            logger.info("Making request to analysis endpoint")
             response = requests.post(
                 'https://analyze-slaz.onrender.com/analyze',
                 json={
                     'query': query,
-                    'systemPrompt': systemPrompt               
+                    'systemPrompt': systemPrompt                
                     },
                 headers={'Content-Type': 'application/json'}
             )
@@ -282,34 +269,28 @@ class KadenaAnalysisTool(BaseTool):
             # Handle specific error cases
             if response.status_code == 400:
                 error_data = response.json()
-                logger.error(f"Bad Request for analysis: {error_data.get('error', 'Unknown error')}")
                 return {"error": f"Bad Request: {error_data.get('error', 'Unknown error')}"}
             elif response.status_code == 500:
                 error_data = response.json()
-                logger.error(f"Server Error for analysis: {error_data.get('error', 'Unknown error')}")
                 return {"error": f"Server Error: {error_data.get('error', 'Unknown error')}"}
                 
             response.raise_for_status()
-            logger.info("Successfully processed analysis request")
             return response.json()
             
         except requests.exceptions.RequestException as e:
             if hasattr(e, 'response') and e.response is not None:
                 try:
                     error_data = e.response.json()
-                    logger.error(f"Analysis API Error: {error_data.get('error', str(e))}")
                     return {"error": f"API Error: {error_data.get('error', str(e))}"}
                 except ValueError:
-                    logger.error(f"Analysis API request failed: {str(e)}")
                     return {"error": f"API request failed: {str(e)}"}
-            logger.error(f"Analysis API request failed: {str(e)}")
             return {"error": f"API request failed: {str(e)}"}
     
     async def _arun(self, query: str, systemPrompt: str) -> Dict[str, Any]:
         """Async version of the tool."""
         return self._run(query, systemPrompt)
-
-# Define request models
+    
+    
 class QueryRequest(BaseModel):
     query: str = Field(..., description="The user's query about Kadena blockchain")
     history: Optional[List[str]] = Field(None, description="Previous conversation history")
