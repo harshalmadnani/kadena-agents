@@ -29,7 +29,7 @@ export interface ChatQuery {
 }
 
 // Different response types based on query type
-export interface SwapResponse {
+export interface QuoteResponse {
   amountOut: string;
   priceImpact: string;
 }
@@ -40,21 +40,42 @@ export interface TransactionData {
   sigs: (string | null)[];
 }
 
+export interface TransactionMetadata {
+  sender: string;
+  receiver: string;
+  amount: number;
+  tokenAddress: string;
+  chainId: number;
+  networkId: string;
+  estimatedGas: number;
+  formattedAmount: string;
+}
+
 export interface TransactionQuote {
   expectedIn: string;
   expectedOut: string;
-  slippage: number;
+  slippage: string;
   priceImpact: string;
+}
+
+export interface NFTMetadata {
+  name: string;
+  description: string;
+  uri: string;
+  collection: string;
+  royalties: string;
 }
 
 export interface TransactionResponse {
   transaction: TransactionData;
   quote?: TransactionQuote;
-  [key: string]: any;
+  metadata?: TransactionMetadata | NFTMetadata;
+  tokenId?: string;
+  collectionId?: string;
 }
 
 export interface ChatResponse {
-  response: string | SwapResponse | TransactionResponse;
+  response: string | QuoteResponse | TransactionResponse;
   intermediate_steps: any[];
   history: string[];
 }
@@ -74,7 +95,6 @@ export const chatApi = {
     }
   },
 
-  // Process a natural language query
   sendQuery: async (queryData: ChatQuery): Promise<ChatResponse> => {
     try {
       // Create the request payload with current history

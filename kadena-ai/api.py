@@ -2,11 +2,23 @@ import os
 import json
 import requests
 import datetime
+import logging
 from typing import Dict, List, Any, Optional, Union, Tuple, Literal
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('kadena_api.log')
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # LangChain imports
 from langchain.agents import Tool, AgentExecutor, create_openai_functions_agent
@@ -37,6 +49,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows the specified origin
+    allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
@@ -46,22 +59,29 @@ async def health_check():
     """
     Health check endpoint that returns the status of the service and its dependencies.
     """
+    logger.info("Health check request received")
     try:
         openai_status = "healthy"
+        logger.info("OpenAI status check successful")
     except Exception as e:
         openai_status = f"error: {str(e)}"
+        logger.error(f"OpenAI status check failed: {str(e)}")
 
     try:
         # Check Kadena API connection
+        logger.info("Checking Kadena API connection")
         response = requests.get(
             "https://kadena-agents.onrender.com/",
             headers={'Content-Type': 'application/json', 'x-api-key': API_KEY}
         )
         response.raise_for_status()
         kadena_status = "healthy"
+        logger.info("Kadena API connection check successful")
     except Exception as e:
         kadena_status = f"error: {str(e)}"
+        logger.error(f"Kadena API connection check failed: {str(e)}")
 
+    logger.info("Health check completed successfully")
     return {
         "status": "ok",
         "version": "1.0.0",
@@ -140,9 +160,12 @@ class KadenaTransactionTool(BaseTool):
         Returns:
             Dict containing the unsigned transaction data or error information
         """
+        logger.info(f"Processing transaction request for endpoint: {endpoint}")
+        
         # Validate endpoint
         valid_endpoints = {'quote', 'transfer', 'swap', 'nft/launch', 'nft/collection'}
         if endpoint not in valid_endpoints:
+            logger.error(f"Invalid endpoint requested: {endpoint}")
             return {"error": f"Invalid endpoint. Must be one of: {valid_endpoints}"}
         
         # Validate required parameters based on endpoint
@@ -157,29 +180,36 @@ class KadenaTransactionTool(BaseTool):
         # Special validation for swap endpoint
         if endpoint == 'swap':
             if 'amountIn' in body and 'amountOut' in body:
+                logger.error("Both amountIn and amountOut specified for swap")
                 return {"error": "Cannot specify both amountIn and amountOut for swap"}
             if 'amountIn' not in body and 'amountOut' not in body:
+                logger.error("Neither amountIn nor amountOut specified for swap")
                 return {"error": "Must specify either amountIn or amountOut for swap"}
             
         # Special validation for quote endpoint
         if endpoint == 'quote':
             if 'amountIn' in body and 'amountOut' in body:
+                logger.error("Both amountIn and amountOut specified for quote")
                 return {"error": "Cannot specify both amountIn and amountOut for quote"}
             if 'amountIn' not in body and 'amountOut' not in body:
+                logger.error("Neither amountIn nor amountOut specified for quote")
                 return {"error": "Must specify either amountIn or amountOut for quote"}
         
         # Check required parameters
         missing_params = [param for param in required_params[endpoint] 
                          if param not in body]
         if missing_params:
+            logger.error(f"Missing required parameters for {endpoint}: {missing_params}")
             return {"error": f"Missing required parameters: {missing_params}"}
         
         # Validate chainId
         if int(body.get('chainId')) > 19 or int(body.get('chainId')) < 0:
+            logger.error(f"Invalid chainId provided: {body.get('chainId')}")
             return {"error": "Invalid chainId. Must be between 0 and 19"}
         
         # Make API request
         try:
+            logger.info(f"Making API request to {endpoint}")
             response = requests.post(
                 f"https://kadena-agents.onrender.com/{endpoint}",
                 json=body,
@@ -189,21 +219,27 @@ class KadenaTransactionTool(BaseTool):
             # Handle specific error cases
             if response.status_code == 400:
                 error_data = response.json()
+                logger.error(f"Bad Request for {endpoint}: {error_data.get('error', 'Unknown error')}")
                 return {"error": f"Bad Request: {error_data.get('error', 'Unknown error')}"}
             elif response.status_code == 500:
                 error_data = response.json()
+                logger.error(f"Server Error for {endpoint}: {error_data.get('error', 'Unknown error')}")
                 return {"error": f"Server Error: {error_data.get('error', 'Unknown error')}"}
                 
             response.raise_for_status()
+            logger.info(f"Successfully processed {endpoint} request")
             return response.json()
             
         except requests.exceptions.RequestException as e:
             if hasattr(e, 'response') and e.response is not None:
                 try:
                     error_data = e.response.json()
+                    logger.error(f"API Error for {endpoint}: {error_data.get('error', str(e))}")
                     return {"error": f"API Error: {error_data.get('error', str(e))}"}
                 except ValueError:
+                    logger.error(f"API request failed for {endpoint}: {str(e)}")
                     return {"error": f"API request failed: {str(e)}"}
+            logger.error(f"API request failed for {endpoint}: {str(e)}")
             return {"error": f"API request failed: {str(e)}"}
     
     async def _arun(self, endpoint: Literal["transfer", "swap", "nft/launch", "nft/collection", "quote"], body: Dict[str, Any]) -> Dict[str, Any]:
@@ -231,7 +267,9 @@ class KadenaAnalysisTool(BaseTool):
         Returns:
             Dict containing the analysis response or error information
         """
+        logger.info("Processing analysis request")
         try:
+            logger.info("Making request to analysis endpoint")
             response = requests.post(
                 'https://analyze-slaz.onrender.com/analyze',
                 json={
@@ -244,21 +282,27 @@ class KadenaAnalysisTool(BaseTool):
             # Handle specific error cases
             if response.status_code == 400:
                 error_data = response.json()
+                logger.error(f"Bad Request for analysis: {error_data.get('error', 'Unknown error')}")
                 return {"error": f"Bad Request: {error_data.get('error', 'Unknown error')}"}
             elif response.status_code == 500:
                 error_data = response.json()
+                logger.error(f"Server Error for analysis: {error_data.get('error', 'Unknown error')}")
                 return {"error": f"Server Error: {error_data.get('error', 'Unknown error')}"}
                 
             response.raise_for_status()
+            logger.info("Successfully processed analysis request")
             return response.json()
             
         except requests.exceptions.RequestException as e:
             if hasattr(e, 'response') and e.response is not None:
                 try:
                     error_data = e.response.json()
+                    logger.error(f"Analysis API Error: {error_data.get('error', str(e))}")
                     return {"error": f"API Error: {error_data.get('error', str(e))}"}
                 except ValueError:
+                    logger.error(f"Analysis API request failed: {str(e)}")
                     return {"error": f"API request failed: {str(e)}"}
+            logger.error(f"Analysis API request failed: {str(e)}")
             return {"error": f"API request failed: {str(e)}"}
     
     async def _arun(self, query: str, systemPrompt: str) -> Dict[str, Any]:
@@ -272,15 +316,15 @@ class QueryRequest(BaseModel):
 
 @app.post("/query", summary="Process a natural language query about Kadena blockchain")
 async def process_query(request: QueryRequest):
-    """
-    Process a natural language query about Kadena blockchain.
-    The agent will determine whether it's a transaction request or an informational query.
-    """
+    logger.info("Received query request")
     try:
-        result = run_kadena_agent_with_context(request.query, request.history)
+        logger.info("Processing query with agent")
+        result = await run_kadena_agent_with_context(request.query, request.history)
+        logger.info("Successfully processed query")
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
+        logger.error(f"Error processing query: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

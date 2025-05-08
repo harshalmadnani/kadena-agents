@@ -19,6 +19,8 @@ const {
  */
 router.post("/", async (req, res) => {
   try {
+    req.logStep("Start transfer request");
+
     const {
       tokenAddress,
       sender,
@@ -33,6 +35,7 @@ router.post("/", async (req, res) => {
 
     // 1. Validate required parameters
     if (!tokenAddress || !sender || !receiver || !amount || !chainId) {
+      req.logStep("Validation failed: missing parameters");
       return res.status(400).json({
         error: "Missing required parameters",
         details:
@@ -43,6 +46,7 @@ router.post("/", async (req, res) => {
     // Validate chain ID
     const chainIdValidation = validateChainId(chainId);
     if (!chainIdValidation.valid) {
+      req.logStep("Validation failed: invalid chain ID");
       return res.status(400).json({
         error: chainIdValidation.error,
         details: chainIdValidation.details,
@@ -54,12 +58,14 @@ router.post("/", async (req, res) => {
     try {
       parsedAmount = new BigNumber(amount);
       if (parsedAmount.isNaN() || parsedAmount.isLessThanOrEqualTo(0)) {
+        req.logStep("Validation failed: invalid amount");
         return res.status(400).json({
           error: "Invalid amount",
           details: "Amount must be a positive number",
         });
       }
     } catch (error) {
+      req.logStep("Validation failed: amount parsing error");
       return res.status(400).json({
         error: "Invalid amount format",
         details: error.message,
@@ -68,6 +74,7 @@ router.post("/", async (req, res) => {
 
     // 3. Validate account formats
     if (sender.startsWith("k:") && sender.length < 66) {
+      req.logStep("Validation failed: invalid sender format");
       return res.status(400).json({
         error: "Invalid sender format",
         details: "Sender account appears to be invalid",
@@ -75,18 +82,21 @@ router.post("/", async (req, res) => {
     }
 
     if (receiver.startsWith("k:") && receiver.length < 66) {
+      req.logStep("Validation failed: invalid receiver format");
       return res.status(400).json({
         error: "Invalid receiver format",
         details: "Receiver account appears to be invalid",
       });
     }
 
-    // 4. Get token precision
+    // 4. Get token precision and format amount
     const tokenPrecision = getTokenPrecision(tokenAddress);
     const formattedAmount = reduceBalance(parsedAmount, tokenPrecision);
     const numericAmount = parseFloat(formattedAmount);
+    req.logStep("Amount formatted");
 
     // 5. Fetch sender's guard
+    req.logStep("Fetching sender details");
     const pactClient = getClient(chainId);
     const accountDetailsCmd = Pact.builder
       .execution(`(coin.details "${sender}")`)
@@ -112,12 +122,14 @@ router.post("/", async (req, res) => {
         accountDetails?.result?.status !== "success" ||
         !accountDetails.result.data?.guard
       ) {
+        req.logStep("Failed to fetch sender details");
         return res.status(404).json({
           error: "Account not found",
           details: "Could not retrieve sender account details from blockchain",
         });
       }
     } catch (error) {
+      req.logStep("Error fetching sender details");
       console.error("Error fetching account details:", error);
       return res.status(500).json({
         error: "Failed to retrieve account details",
@@ -126,8 +138,9 @@ router.post("/", async (req, res) => {
     }
 
     const userGuard = accountDetails.result.data.guard;
+    req.logStep("Sender details retrieved");
 
-    // 6. Prepare transaction metadata
+    // 6. Prepare transaction
     const txMeta = {
       creationTime: creationTime(),
       ttl: parseInt(ttl, 10),
@@ -140,43 +153,31 @@ router.post("/", async (req, res) => {
 
     // 7. Create transaction
     try {
+      req.logStep("Building transaction");
+
       // Build the transaction command
       let pactCode;
       const envData = { amount: formattedAmount };
+      const transferAmount = { decimal: formattedAmount };
 
+      // Set up code and capabilities based on token type
       if (tokenAddress === "coin") {
-        // Native KDA transfer
         pactCode = `(coin.transfer "${sender}" "${receiver}" (read-decimal 'amount))`;
       } else {
-        // Fungible token transfer using fungible-v2 standard
         pactCode = `(${tokenAddress}.transfer "${sender}" "${receiver}" (read-decimal 'amount))`;
       }
 
-      // Use decimal object for TRANSFER capability
-      const transferAmount = { decimal: formattedAmount };
-
-      // Define the correct capabilities format
       const capabilities = [
+        { name: "coin.GAS", args: [] },
         {
-          name: "coin.GAS",
-          args: [],
+          name:
+            tokenAddress === "coin"
+              ? "coin.TRANSFER"
+              : `${tokenAddress}.TRANSFER`,
+          args: [sender, receiver, transferAmount],
         },
       ];
 
-      // Add the appropriate transfer capability
-      if (tokenAddress === "coin") {
-        capabilities.push({
-          name: "coin.TRANSFER",
-          args: [sender, receiver, transferAmount],
-        });
-      } else {
-        capabilities.push({
-          name: `${tokenAddress}.TRANSFER`,
-          args: [sender, receiver, transferAmount],
-        });
-      }
-
-      // Build the transaction command
       const pactCommand = {
         networkId: KADENA_NETWORK_ID,
         payload: {
@@ -203,8 +204,9 @@ router.post("/", async (req, res) => {
       try {
         const cmdString = JSON.stringify(pactCommand);
         transactionHash = generateTransactionHash(cmdString);
+        req.logStep("Transaction prepared");
       } catch (hashError) {
-        console.error("Failed to generate transaction hash:", hashError);
+        req.logStep("Hash generation failed");
         return res.status(500).json({
           error: "Transaction hash generation failed",
           details:
@@ -231,6 +233,7 @@ router.post("/", async (req, res) => {
         },
       });
     } catch (error) {
+      req.logStep("Transaction build failed");
       console.error("Error building transfer transaction:", error);
       return res.status(500).json({
         error: "Transaction preparation failed",
@@ -238,6 +241,7 @@ router.post("/", async (req, res) => {
       });
     }
   } catch (error) {
+    req.logStep("Unhandled error");
     console.error("Unhandled error in /transfer endpoint:", error);
     return res.status(500).json({
       error: "Internal server error",
