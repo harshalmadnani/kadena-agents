@@ -12,6 +12,11 @@ const api = axios.create({
   },
 });
 
+export interface TokenBalance {
+  symbol: string;
+  balance: number;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -21,6 +26,7 @@ export interface UserContext {
   accountName: string;
   publicKey: string;
   chainId: string;
+  balances: TokenBalance[];
 }
 
 export interface ChatQuery {

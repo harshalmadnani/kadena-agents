@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useWallet } from "../context/WalletContext";
 import {
   chatApi,
   TransactionData,
@@ -64,6 +65,7 @@ const LoadingDots = () => (
 
 const Chat: React.FC = () => {
   const { user, logout } = useAuth();
+  const { balances } = useWallet();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -231,6 +233,7 @@ const Chat: React.FC = () => {
         pred: "keys-all",
       },
       chainId: "2",
+      balances: balances, // Include balances in the context
     };
 
     const contextString = "User Details: " + JSON.stringify(context);

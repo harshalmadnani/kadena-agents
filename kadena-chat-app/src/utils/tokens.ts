@@ -80,4 +80,59 @@ export const tokens: { [key: string]: TokenInfo } = {
     name: "HYPE",
     precision: 12,
   },
+  "free.babena": {
+    symbol: "BABE",
+    name: "BABE",
+    precision: 12,
+  },
+  "kdlaunch.token": {
+    symbol: "KDL",
+    name: "KDL",
+    precision: 12,
+  },
+  "kdlaunch.kdswap-token": {
+    symbol: "KDS",
+    name: "KDS",
+    precision: 12,
+  },
+  "n_2669414de420c0d40bbc3caa615e989eaba83d6f.highlander": {
+    symbol: "HLR",
+    name: "HLR",
+    precision: 12,
+  },
+  "n_c89f6bb915bf2eddf7683fdea9e40691c840f2b6.cwc": {
+    symbol: "CWC",
+    name: "CWC",
+    precision: 12,
+  },
+  "n_95d7fe012aa7e05c187b3fc8c605ff3b1a2c521d.MesutÖzilDönerKebabMerkel42Inu": {
+    symbol: "KEBAB",
+    name: "KEBAB",
+    precision: 12,
+  },
+  "n_95d7fe012aa7e05c187b3fc8c605ff3b1a2c521d.ShrekYodaTrumpMarsX12Inu": {
+    symbol: "GREENCOIN",
+    name: "GREENCOIN",
+    precision: 12,
+  },
+  "n_95d7fe012aa7e05c187b3fc8c605ff3b1a2c521d.SonGokuBezosPikachu12Inu": {
+    symbol: "WLONG",
+    name: "WLONG",
+    precision: 12,
+  },
+  "n_d8d407d0445ed92ba102c2ce678591d69e464006.TRILLIONCARBON": {
+    symbol: "TCTC",
+    name: "TCTC",
+    precision: 12,
+  },
+  "n_518dfea5f0d2abe95cbcd8956eb97f3238e274a9.AZUKI": {
+    symbol: "AZUKI",
+    name: "AZUKI",
+    precision: 12,
+  },
+  "n_71c27e6720665fb572433c8e52eb89833b47b49b.Peppapig": {
+    symbol: "PP",
+    name: "PP",
+    precision: 12,
+  },
 };

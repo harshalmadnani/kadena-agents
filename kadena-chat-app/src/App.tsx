@@ -1,12 +1,20 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './components/Login';
-import Chat from './components/Chat';
-import './App.css';
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import Login from "./components/Login";
+import Chat from "./components/Chat";
+import "./App.css";
+import { WalletProvider } from "./context/WalletContext";
 
 // Protected route component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { isLoggedIn, isLoading } = useAuth();
 
   if (isLoading) {
@@ -40,21 +48,21 @@ const AppRoutes: React.FC = () => {
   return (
     <Router>
       <Routes>
-        <Route 
-          path="/login" 
+        <Route
+          path="/login"
           element={
             <PublicRoute>
               <Login />
             </PublicRoute>
-          } 
+          }
         />
-        <Route 
-          path="/" 
+        <Route
+          path="/"
           element={
             <ProtectedRoute>
               <Chat />
             </ProtectedRoute>
-          } 
+          }
         />
       </Routes>
     </Router>
@@ -65,7 +73,9 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <WalletProvider>
+        <AppRoutes />
+      </WalletProvider>
     </AuthProvider>
   );
 };
