@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './SocialAgentLauncher.css';
 import SocialAgentLauncher from './SocialAgentLauncher';
+import TradingAgentLauncher from './TradingAgentLauncher';
 import ChatHeader from '../ChatHeader';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -84,6 +85,10 @@ const AgentLauncher = () => {
   if (selectedAgentType === 'social') {
     return <SocialAgentLauncher />;
   }
+  
+  if (selectedAgentType === 'trading') {
+    return <TradingAgentLauncher />;
+  }
 
   // Otherwise, show the selection interface
   return (
@@ -162,7 +167,7 @@ const AgentLauncher = () => {
                 <div style={{ width: '90%' }}>
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr',
+                    gridTemplateColumns: '1fr 1fr',
                     gap: '16px',
                     marginBottom: '20px'
                   }}>
@@ -187,6 +192,28 @@ const AgentLauncher = () => {
                         }}
                       />
                       <p style={{ margin: 0, textAlign: 'center' }}>Social Agents</p>
+                    </div>
+                    <div
+                      onClick={() => handleAgentTypeSelect('trading')}
+                      style={{
+                        backgroundColor: '#1a1a1a',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        cursor: 'pointer',
+                        border: selectedAgentType === 'trading' ? '1px solid white' : '1px solid transparent'
+                      }}
+                    >
+                      <img 
+                        src="https://wbsnlpviggcnwqfyfobh.supabase.co/storage/v1/object/public/app//picture9.png" 
+                        alt="Trading Agents"
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          marginBottom: '8px',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <p style={{ margin: 0, textAlign: 'center' }}>Trading Agents</p>
                     </div>
                   </div>
                 </div>
