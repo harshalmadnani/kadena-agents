@@ -39,12 +39,51 @@ app.use((req, res, next) => {
   next();
 });
 
-// Global error handler
+// Add simplified request tracking middleware
+app.use((req, res, next) => {
+  const requestId = Math.random().toString(36).substring(7);
+  const startTime = Date.now();
+
+  // Log initial request
+  console.log(`[${requestId}] → ${req.method} ${req.path}`);
+
+  // Store request context
+  req.context = {
+    requestId,
+    startTime,
+    steps: [],
+  };
+
+  // Simplified step logging
+  req.logStep = (step) => {
+    const stepTime = Date.now() - startTime;
+    console.log(`[${requestId}] ${stepTime}ms - ${step}`);
+  };
+
+  // Override send for completion logging
+  const originalSend = res.send;
+  res.send = function (data) {
+    const duration = Date.now() - startTime;
+    console.log(
+      `[${requestId}] ✓ ${duration}ms ${res.statusCode} ${req.method} ${req.path}`
+    );
+    originalSend.apply(res, arguments);
+  };
+
+  next();
+});
+
+// Simplified error handler
 app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
+  const requestId = req.context?.requestId;
+  const duration = Date.now() - (req.context?.startTime || Date.now());
+
+  console.error(`[${requestId}] ✗ ${duration}ms - ${err.message}`);
+
   res.status(500).json({
     error: "Internal server error",
     details: err.message,
+    requestId,
   });
 });
 

@@ -2,11 +2,23 @@ import os
 import json
 import requests
 import datetime
+import logging
 from typing import Dict, List, Any, Optional, Union, Tuple, Literal
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('kadena_api.log')
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # LangChain imports
 from langchain.agents import Tool, AgentExecutor, create_openai_functions_agent
@@ -37,6 +49,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows the specified origin
+    allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
@@ -46,22 +59,29 @@ async def health_check():
     """
     Health check endpoint that returns the status of the service and its dependencies.
     """
+    logger.info("Health check request received")
     try:
         openai_status = "healthy"
+        logger.info("OpenAI status check successful")
     except Exception as e:
         openai_status = f"error: {str(e)}"
+        logger.error(f"OpenAI status check failed: {str(e)}")
 
     try:
         # Check Kadena API connection
+        logger.info("Checking Kadena API connection")
         response = requests.get(
             "https://kadena-agents.onrender.com/",
             headers={'Content-Type': 'application/json', 'x-api-key': API_KEY}
         )
         response.raise_for_status()
         kadena_status = "healthy"
+        logger.info("Kadena API connection check successful")
     except Exception as e:
         kadena_status = f"error: {str(e)}"
+        logger.error(f"Kadena API connection check failed: {str(e)}")
 
+    logger.info("Health check completed successfully")
     return {
         "status": "ok",
         "version": "1.0.0",
@@ -74,6 +94,10 @@ async def health_check():
 
 # Initialize OpenAI model
 model = ChatOpenAI(model="o4-mini")
+
+from typing import Dict, Any, Literal, Optional
+import requests
+from langchain.tools import BaseTool
 
 class KadenaTransactionTool(BaseTool):
     name: str = "kadena_transaction"
@@ -112,13 +136,14 @@ class KadenaTransactionTool(BaseTool):
     
     For NFT minting:
     - endpoint: "nft/launch"
+    - name: NFT name
     - account: User's account (k:account format)
     - guard: Guard object with keys and pred
     - mintTo: Account to mint to (k:account format)
     - uri: IPFS URI or metadata link
     - collectionId: Collection ID
     - chainId: Chain ID (must be "2")
-    - Optional: precision, policy, royalties, royaltyRecipient, name, description
+    - Optional: precision, policy, royalties, royaltyRecipient, description
     
     For collection creation:
     - endpoint: "nft/collection"
@@ -150,7 +175,7 @@ class KadenaTransactionTool(BaseTool):
             'quote': ['tokenInAddress', 'tokenOutAddress', 'chainId'],
             'transfer': ['tokenAddress', 'sender', 'receiver', 'amount', 'chainId'],
             'swap': ['tokenInAddress', 'tokenOutAddress', 'account', 'chainId'],
-            'nft/launch': ['account', 'guard', 'mintTo', 'uri', 'collectionId', 'chainId'],
+            'nft/launch': ['name', 'account', 'guard', 'mintTo', 'uri', 'collectionId', 'chainId'],
             'nft/collection': ['account', 'guard', 'name', 'chainId']
         }
         
@@ -183,7 +208,7 @@ class KadenaTransactionTool(BaseTool):
             response = requests.post(
                 f"https://kadena-agents.onrender.com/{endpoint}",
                 json=body,
-                headers={'Content-Type': 'application/json', 'x-api-key': API_KEY}
+                headers={'Content-Type': 'application/json', 'x-api-key': 'Commune_dev1'}
             )
             
             # Handle specific error cases
@@ -236,7 +261,7 @@ class KadenaAnalysisTool(BaseTool):
                 'https://analyze-slaz.onrender.com/analyze',
                 json={
                     'query': query,
-                    'systemPrompt': systemPrompt               
+                    'systemPrompt': systemPrompt                
                     },
                 headers={'Content-Type': 'application/json'}
             )
@@ -264,23 +289,23 @@ class KadenaAnalysisTool(BaseTool):
     async def _arun(self, query: str, systemPrompt: str) -> Dict[str, Any]:
         """Async version of the tool."""
         return self._run(query, systemPrompt)
-
-# Define request models
+    
+    
 class QueryRequest(BaseModel):
     query: str = Field(..., description="The user's query about Kadena blockchain")
     history: Optional[List[str]] = Field(None, description="Previous conversation history")
 
 @app.post("/query", summary="Process a natural language query about Kadena blockchain")
 async def process_query(request: QueryRequest):
-    """
-    Process a natural language query about Kadena blockchain.
-    The agent will determine whether it's a transaction request or an informational query.
-    """
+    logger.info("Received query request")
     try:
+        logger.info("Processing query with agent")
         result = run_kadena_agent_with_context(request.query, request.history)
+        logger.info("Successfully processed query")
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
+        logger.error(f"Error processing query: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

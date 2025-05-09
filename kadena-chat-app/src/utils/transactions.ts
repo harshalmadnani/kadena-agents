@@ -12,6 +12,10 @@ interface TokenInfo {
   precision: number;
 }
 
+interface DecimalBalance {
+  decimal: string;
+}
+
 interface TokenBalance {
   symbol: string;
   balance: number;
@@ -69,11 +73,11 @@ export const getBalance = async (
       tokenName,
     });
     const response = await kadenaClient.dirtyRead(transaction);
-    if (response.result.status === "failure") {
-      console.error("Failed to get balance:", response.result.error);
-      return 0;
+    if (response.result.status === "success") {
+      console.log(`Balance of ${tokenName}:`, response.result.data);
+      return (response.result as any).data as number | DecimalBalance;
     }
-    return (response.result as any).data as number;
+    return 0;
   } catch (error) {
     console.error(`Failed to get ${tokenName} balance:`, error);
     return 0;
@@ -89,11 +93,15 @@ export const getAllBalances = async (
       const balance = await getBalance(accountName, chainId, tokenName);
       return {
         symbol: tokenInfo.symbol,
-        balance,
+        balance:
+          typeof balance === "object" && (balance as DecimalBalance)?.decimal
+            ? parseFloat((balance as DecimalBalance).decimal)
+            : (balance as number),
       };
     })
   );
 
+  console.log(balances);
   // Filter out zero balances
   return balances.filter(({ balance }) => balance > 0);
 };

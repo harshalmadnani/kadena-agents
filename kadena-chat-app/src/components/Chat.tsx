@@ -1,17 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useWallet } from "../context/WalletContext";
 import {
   chatApi,
-  SwapResponse,
   TransactionData,
   TransactionResponse,
+  QuoteResponse,
+  TransactionMetadata,
+  NFTMetadata,
+  TransactionQuote,
 } from "../services/api";
 import walletService, { SignAndSubmitResult } from "../services/walletService";
 import WalletInfo from "./WalletInfo";
 import "./Chat.css";
 import { getAllBalances } from "../utils/transactions";
-import ChatHeader from "./ChatHeader";
 
 interface Message {
   role: "user" | "assistant";
@@ -63,7 +65,7 @@ const LoadingDots = () => (
 
 const Chat: React.FC = () => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { balances } = useWallet();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -85,33 +87,85 @@ const Chat: React.FC = () => {
 
   // Format transaction response for display
   const formatTransactionResponse = (response: any): string => {
-    // Check if it's a transaction response
+    // Handle quote-only response
+    if ("amountOut" in response && "priceImpact" in response) {
+      const quoteResponse = response as QuoteResponse;
+      return (
+        `### Quote Details\n` +
+        `- **Output Amount:** ${quoteResponse.amountOut}\n` +
+        `- **Price Impact:** ${quoteResponse.priceImpact}%\n`
+      );
+    }
+
+    // Handle transaction response
     if (response.transaction) {
-      const txResponse = response as TransactionResponseData;
+      const txResponse = response as TransactionResponse;
       let formattedResponse = `## Transaction Generated\n`;
 
+      // Handle swap quote details
       if (txResponse.quote) {
-        formattedResponse += `### Exchange Details\n`;
-        formattedResponse += `- **Input Amount:** ${txResponse.quote.expectedIn}\n`;
-        formattedResponse += `- **Output Amount:** ${txResponse.quote.expectedOut}\n`;
-        formattedResponse += `- **Price Impact:** ${txResponse.quote.priceImpact}%\n`;
-        formattedResponse += `- **Slippage Tolerance:** ${
-          txResponse.quote.slippage * 100
-        }%\n`;
+        formattedResponse +=
+          `### Exchange Details\n` +
+          `- **Input Amount:** ${txResponse.quote.expectedIn}\n` +
+          `- **Output Amount:** ${txResponse.quote.expectedOut}\n` +
+          `- **Price Impact:** ${txResponse.quote.priceImpact}%\n` +
+          `- **Slippage Tolerance:** ${txResponse.quote.slippage}%\n\n`;
       }
 
-      formattedResponse += `### Transaction Details\n`;
-      formattedResponse += `- **Hash:** \`${txResponse.transaction.hash}\`\n`;
-      formattedResponse += `- **Chain ID:** ${
-        JSON.parse(txResponse.transaction.cmd).meta?.chainId || "Unknown"
-      }\n`;
-      formattedResponse += `**Do you want to sign and submit this transaction?**`;
+      // Handle transfer metadata
+      if (txResponse.metadata && "sender" in txResponse.metadata) {
+        const metadata = txResponse.metadata as TransactionMetadata;
+        formattedResponse +=
+          `### Transfer Details\n` +
+          `- **From:** ${metadata.sender}\n` +
+          `- **To:** ${metadata.receiver}\n` +
+          `- **Amount:** ${metadata.formattedAmount}\n` +
+          `- **Token:** ${metadata.tokenAddress}\n` +
+          `- **Estimated Gas:** ${metadata.estimatedGas} KDA\n\n`;
+      }
+
+      // Handle NFT metadata
+      if (txResponse.metadata && "uri" in txResponse.metadata) {
+        const metadata = txResponse.metadata as NFTMetadata;
+        formattedResponse +=
+          `### NFT Details\n` +
+          `- **Name:** ${metadata.name}\n` +
+          `- **Description:** ${metadata.description}\n` +
+          `- **Collection:** ${metadata.collection}\n` +
+          `- **Royalties:** ${metadata.royalties}\n` +
+          `- **URI:** ${metadata.uri}\n\n`;
+      }
+
+      // Handle collection ID
+      if (txResponse.collectionId) {
+        formattedResponse +=
+          `### Collection Details\n` +
+          `- **Collection ID:** ${txResponse.collectionId}\n\n`;
+      }
+
+      // Handle token ID
+      if (txResponse.tokenId) {
+        formattedResponse +=
+          `### Token Details\n` + `- **Token ID:** ${txResponse.tokenId}\n\n`;
+      }
+
+      // Add transaction details
+      formattedResponse +=
+        `### Transaction Details\n` +
+        `- **Hash:** \`${txResponse.transaction.hash}\`\n` +
+        `- **Chain ID:** ${
+          JSON.parse(txResponse.transaction.cmd).meta?.chainId || "Unknown"
+        }\n` +
+        `- **Network:** ${
+          JSON.parse(txResponse.transaction.cmd).networkId || "Unknown"
+        }\n\n` +
+        `**Do you want to sign and submit this transaction?**`;
 
       return formattedResponse;
     }
 
-    // Default JSON formatting for other object types
-    return JSON.stringify(response, null, 2);
+    // Default JSON formatting for other response types
+    return `\`\`\`json\n${JSON.stringify(response, null, 2)}\n\`\`\``;
   };
 
   // Function to convert markdown text to HTML (basic implementation)
@@ -171,9 +225,20 @@ const Chat: React.FC = () => {
     if (!inputValue.trim() || !user?.accountName) return;
 
     // Create context string
-    const contextString = `[Using account: ${user.accountName}, public key: ${
-      user.publicKey || "not available"
-    }, chain: 2]`;
+    const context = {
+      accountName: user.accountName,
+      publicKey: user.publicKey || "not available",
+      guard: {
+        keys: [user.publicKey || "not available"],
+        pred: "keys-all",
+      },
+      chainId: "2",
+      balances: balances, // Include balances in the context
+    };
+
+    const contextString = "User Details: " + JSON.stringify(context);
+
+    console.log(contextString);
 
     // Combine context with user query
     const enhancedQuery = `${inputValue}\n${contextString}`;
@@ -309,14 +374,27 @@ const Chat: React.FC = () => {
 
   return (
     <div className="chat-container">
-      <ChatHeader
-        user={user}
-        showWallet={showWallet}
-        onToggleWallet={toggleWallet}
-        mainActionLabel="Launch Agent"
-        onMainAction={() => navigate('/agent')}
-        onLogout={handleLogout}
-      />
+      <div className="chat-header">
+        <div className="user-info">
+          <div className="user-avatar">
+            {user?.email?.charAt(0).toUpperCase() || "U"}
+          </div>
+          <div className="user-details">
+            <div className="user-name">{user?.email || "User"}</div>
+            <div className="user-wallet">
+              {user?.accountName || "No wallet connected"}
+            </div>
+          </div>
+        </div>
+        <div className="header-actions">
+          <button className="wallet-toggle" onClick={toggleWallet}>
+            {showWallet ? "Hide Wallet" : "Show Wallet"}
+          </button>
+          <button className="logout-button" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+      </div>
 
       <div className="main-content">
         <div className="messages-container">

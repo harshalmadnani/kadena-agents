@@ -1,46 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { chainId } from "../services/magic";
-import { getAllBalances } from "../utils/transactions";
+import { useWallet } from "../context/WalletContext";
 import { tokens } from "../utils/tokens";
 import "./WalletInfo.css";
 
-interface TokenBalance {
-  symbol: string;
-  balance: number;
-}
-
 const WalletInfo: React.FC = () => {
   const { user } = useAuth();
-  const [balances, setBalances] = useState<TokenBalance[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const { balances, isLoading, error, refreshBalances } = useWallet();
   const [copiedText, setCopiedText] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchBalances = async () => {
-      if (!user?.accountName) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        const tokenBalances = await getAllBalances(user.accountName, chainId);
-        setBalances(tokenBalances);
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching balances:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch balances"
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchBalances();
-  }, [user?.accountName]);
 
   const copyToClipboard = async (text: string, type: string) => {
     try {
@@ -88,7 +55,16 @@ const WalletInfo: React.FC = () => {
         </div>
 
         <div className="wallet-item">
-          <span className="label">Token Balances</span>
+          <span className="label">
+            Token Balances
+            <button
+              onClick={refreshBalances}
+              className="refresh-button"
+              disabled={isLoading}
+            >
+              🔄 Refresh
+            </button>
+          </span>
           {isLoading ? (
             <div className="loading-indicator">Loading balances...</div>
           ) : error ? (

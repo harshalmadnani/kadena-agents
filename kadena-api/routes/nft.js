@@ -123,6 +123,8 @@ const createTxMeta = (chainId, sender) => {
  */
 router.post("/launch", async (req, res) => {
   try {
+    req.logStep("Start NFT launch request");
+
     const {
       account,
       guard,
@@ -141,15 +143,17 @@ router.post("/launch", async (req, res) => {
     // Validate required parameters
     const chainIdValidation = validateChainId(chainId);
     if (!chainIdValidation.valid) {
+      req.logStep("Invalid chain ID");
       return res.status(400).json({
         error: chainIdValidation.error,
         details: chainIdValidation.details,
       });
     }
 
-    // Validate account and guard using shared functions
+    // Validate account and guard
     const accountValidation = validateAccount(account);
     if (!accountValidation.valid) {
+      req.logStep("Invalid account format");
       return res.status(400).json({
         error: accountValidation.error,
         details: accountValidation.details,
@@ -158,6 +162,7 @@ router.post("/launch", async (req, res) => {
 
     const guardValidation = validateGuard(guard);
     if (!guardValidation.valid) {
+      req.logStep("Invalid guard format");
       return res.status(400).json({
         error: guardValidation.error,
         details: guardValidation.details,
@@ -167,6 +172,7 @@ router.post("/launch", async (req, res) => {
     // Validate mintTo account
     const mintToValidation = validateAccount(mintTo);
     if (!mintToValidation.valid) {
+      req.logStep("Invalid mintTo account");
       return res.status(400).json({
         error: "Invalid mintTo account",
         details: mintToValidation.details,
@@ -175,6 +181,7 @@ router.post("/launch", async (req, res) => {
 
     // Validate other required fields
     if (!uri || !collectionId) {
+      req.logStep("Missing required fields");
       return res.status(400).json({
         error: "Missing required parameters",
         details: "uri and collectionId are required",
@@ -184,6 +191,7 @@ router.post("/launch", async (req, res) => {
     // Validate royalty parameters
     if (policy.includes("ROYALTY")) {
       if (royalties <= 0) {
+        req.logStep("Invalid royalty value");
         return res.status(400).json({
           error: "Invalid royalty",
           details: "Royalties must be greater than 0 for royalty policies",
@@ -192,6 +200,7 @@ router.post("/launch", async (req, res) => {
 
       const royaltyRecipientValidation = validateAccount(royaltyRecipient);
       if (!royaltyRecipientValidation.valid) {
+        req.logStep("Invalid royalty recipient");
         return res.status(400).json({
           error: "Missing/Invalid royalty recipient",
           details:
@@ -201,8 +210,10 @@ router.post("/launch", async (req, res) => {
     }
 
     // Get account guard
+    req.logStep("Fetching account guard");
     const accountGuardResult = await getAccountGuard(account, chainId);
     if (!accountGuardResult.success) {
+      req.logStep("Failed to fetch account guard");
       return res.status(404).json({
         error: accountGuardResult.error,
         details: accountGuardResult.details,
@@ -214,6 +225,7 @@ router.post("/launch", async (req, res) => {
       const pactClient = getClient(chainId);
 
       // Generate token ID
+      req.logStep("Generating token ID");
       let policyName =
         policy === "DEFAULT_COLLECTION_NON_UPDATABLE"
           ? "marmalade-v2.non-fungible-policy-v1"
@@ -238,6 +250,7 @@ router.post("/launch", async (req, res) => {
       const tokenIdResult = await pactClient.dirtyRead(tokenIdCmd);
 
       if (!tokenIdResult?.result?.data) {
+        req.logStep("Failed to generate token ID");
         throw new Error(
           tokenIdResult?.result?.error?.message || "Failed to generate token ID"
         );
@@ -246,8 +259,10 @@ router.post("/launch", async (req, res) => {
       const tokenId = tokenIdResult.result.data;
 
       // Get mintTo account's guard
+      req.logStep("Fetching mintTo account guard");
       const mintToGuardResult = await getAccountGuard(mintTo, chainId);
       if (!mintToGuardResult.success) {
+        req.logStep("Failed to fetch mintTo guard");
         return res.status(404).json({
           error: "MintTo account not found",
           details: "Could not retrieve mintTo account details",
@@ -256,6 +271,7 @@ router.post("/launch", async (req, res) => {
       const mintToGuard = mintToGuardResult.guard;
 
       // Construct NFT creation and minting code
+      req.logStep("Building NFT transaction");
       const pactCode = `(use marmalade-v2.ledger)
 (use marmalade-v2.util-v1)
 (create-token 
@@ -275,6 +291,7 @@ router.post("/launch", async (req, res) => {
       // Prepare environment data
       const envData = {
         uri,
+        ks: accountGuard,
         mintTo,
         collection_id: collectionId,
         name: name || "",
@@ -290,18 +307,12 @@ router.post("/launch", async (req, res) => {
 
       // Define capabilities
       const capabilities = [
-        {
-          name: "coin.GAS",
-          args: [],
-        },
+        { name: "coin.GAS", args: [] },
         {
           name: "marmalade-v2.ledger.CREATE-TOKEN",
           args: [tokenId, precision, uri, guard],
         },
-        {
-          name: "marmalade-v2.ledger.MINT",
-          args: [tokenId, mintTo, 1.0],
-        },
+        { name: "marmalade-v2.ledger.MINT", args: [tokenId, mintTo, 1.0] },
         {
           name: "marmalade-v2.collection-policy-v1.TOKEN-COLLECTION",
           args: [collectionId, tokenId],
@@ -341,25 +352,14 @@ router.post("/launch", async (req, res) => {
       };
 
       // Generate transaction hash
-      let transactionHash;
-      try {
-        // Stringify the command first for consistent hashing
-        const cmdString = JSON.stringify(pactCommand);
-        transactionHash = generateTransactionHash(cmdString);
-        console.log("Transaction hash:", transactionHash);
-      } catch (hashError) {
-        console.error("Failed to generate NFT transaction hash:", hashError);
-        return res.status(500).json({
-          error: "Transaction hash generation failed",
-          details:
-            hashError.message || "Unable to create a valid transaction hash",
-        });
-      }
+      req.logStep("Generating transaction hash");
+      const cmdString = JSON.stringify(pactCommand);
+      const transactionHash = generateTransactionHash(cmdString);
 
-      // Return transaction data
+      req.logStep("NFT launch transaction prepared");
       return res.json({
         transaction: {
-          cmd: JSON.stringify(pactCommand),
+          cmd: cmdString,
           hash: transactionHash,
           sigs: [null],
         },
@@ -373,14 +373,14 @@ router.post("/launch", async (req, res) => {
         },
       });
     } catch (error) {
-      console.error("Error preparing NFT transaction:", error);
+      req.logStep("Transaction preparation failed");
       return res.status(500).json({
         error: "Transaction preparation failed",
         details: error.message,
       });
     }
   } catch (error) {
-    console.error("Unhandled error in /nft/launch endpoint:", error);
+    req.logStep("Unhandled error");
     return res.status(500).json({
       error: "Internal server error",
       details: error.message,
@@ -394,27 +394,31 @@ router.post("/launch", async (req, res) => {
  */
 router.post("/collection", async (req, res) => {
   try {
+    req.logStep("Start collection creation request");
+
     const {
       account,
       guard,
       name,
       description = "",
-      totalSupply = 0,
+      totalSupply = 1000000,
       chainId = "2",
     } = req.body;
 
     // Validate required parameters
     const chainIdValidation = validateChainId(chainId);
     if (!chainIdValidation.valid) {
+      req.logStep("Invalid chain ID");
       return res.status(400).json({
         error: chainIdValidation.error,
         details: chainIdValidation.details,
       });
     }
 
-    // Validate account and guard using shared functions
+    // Validate account and guard
     const accountValidation = validateAccount(account);
     if (!accountValidation.valid) {
+      req.logStep("Invalid account format");
       return res.status(400).json({
         error: accountValidation.error,
         details: accountValidation.details,
@@ -423,6 +427,7 @@ router.post("/collection", async (req, res) => {
 
     const guardValidation = validateGuard(guard);
     if (!guardValidation.valid) {
+      req.logStep("Invalid guard format");
       return res.status(400).json({
         error: guardValidation.error,
         details: guardValidation.details,
@@ -431,6 +436,7 @@ router.post("/collection", async (req, res) => {
 
     // Validate name
     if (!name) {
+      req.logStep("Missing collection name");
       return res.status(400).json({
         error: "Missing required parameters",
         details: "name is required",
@@ -438,8 +444,10 @@ router.post("/collection", async (req, res) => {
     }
 
     // Get account guard
+    req.logStep("Fetching account guard");
     const accountGuardResult = await getAccountGuard(account, chainId);
     if (!accountGuardResult.success) {
+      req.logStep("Failed to fetch account guard");
       return res.status(404).json({
         error: accountGuardResult.error,
         details: accountGuardResult.details,
@@ -451,12 +459,11 @@ router.post("/collection", async (req, res) => {
       const pactClient = getClient(chainId);
 
       // Create collection ID
+      req.logStep("Generating collection ID");
       const collectionIdCmd = Pact.builder
         .execution(
           `(use marmalade-v2.collection-policy-v1)
-           (marmalade-v2.collection-policy-v1.create-collection-id ${JSON.stringify(
-             name
-           )} (read-keyset 'ks))`
+           (create-collection-id ${JSON.stringify(name)} (read-keyset 'ks))`
         )
         .setMeta({
           chainId: ensureChainIdString(chainId),
@@ -472,6 +479,7 @@ router.post("/collection", async (req, res) => {
       const collectionIdResult = await pactClient.dirtyRead(collectionIdCmd);
 
       if (!collectionIdResult?.result?.data) {
+        req.logStep("Failed to generate collection ID");
         throw new Error(
           collectionIdResult?.result?.error?.message ||
             "Failed to generate collection ID"
@@ -480,7 +488,8 @@ router.post("/collection", async (req, res) => {
 
       const collectionId = collectionIdResult.result.data;
 
-      // Construct collection creation code
+      // Build transaction
+      req.logStep("Building collection transaction");
       const pactCode = `(use marmalade-v2.collection-policy-v1)
 (marmalade-v2.collection-policy-v1.create-collection
   ${JSON.stringify(collectionId)}
@@ -494,14 +503,12 @@ router.post("/collection", async (req, res) => {
         description,
         collectionId,
         totalSupply: parseInt(totalSupply),
+        ks: accountGuard,
       };
 
       // Define capabilities
       const capabilities = [
-        {
-          name: "coin.GAS",
-          args: [],
-        },
+        { name: "coin.GAS", args: [] },
         {
           name: "marmalade-v2.collection-policy-v1.COLLECTION-CREATE",
           args: [collectionId],
@@ -534,41 +541,28 @@ router.post("/collection", async (req, res) => {
       };
 
       // Generate transaction hash
-      let transactionHash;
-      try {
-        // Stringify the command first for consistent hashing
-        const cmdString = JSON.stringify(pactCommand);
-        transactionHash = generateTransactionHash(cmdString);
-      } catch (hashError) {
-        console.error(
-          "Failed to generate collection transaction hash:",
-          hashError
-        );
-        return res.status(500).json({
-          error: "Transaction hash generation failed",
-          details:
-            hashError.message || "Unable to create a valid transaction hash",
-        });
-      }
+      req.logStep("Generating transaction hash");
+      const cmdString = JSON.stringify(pactCommand);
+      const transactionHash = generateTransactionHash(cmdString);
 
-      // Return transaction data
+      req.logStep("Collection transaction prepared");
       return res.json({
         transaction: {
-          cmd: JSON.stringify(pactCommand),
+          cmd: cmdString,
           hash: transactionHash,
           sigs: [null],
         },
         collectionId: collectionId,
       });
     } catch (error) {
-      console.error("Error building collection creation transaction:", error);
+      req.logStep("Transaction preparation failed");
       return res.status(500).json({
         error: "Transaction preparation failed",
         details: error.message,
       });
     }
   } catch (error) {
-    console.error("Unhandled error in /nft/collection endpoint:", error);
+    req.logStep("Unhandled error");
     return res.status(500).json({
       error: "Internal server error",
       details: error.message,
