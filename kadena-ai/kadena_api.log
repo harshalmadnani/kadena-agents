@@ -1,0 +1,36 @@
+2025-05-09 15:15:33,840 - __main__ - INFO - Received query request
+2025-05-09 15:15:33,841 - __main__ - INFO - Processing query with agent
+2025-05-09 15:15:46,329 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-09 15:15:46,375 - __main__ - INFO - Successfully processed query
+2025-05-09 15:16:14,263 - __main__ - INFO - Received query request
+2025-05-09 15:16:14,265 - __main__ - INFO - Processing query with agent
+2025-05-09 15:16:23,796 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-09 15:16:24,713 - __main__ - INFO - Successfully processed query
+2025-05-09 15:17:35,775 - __main__ - INFO - Received query request
+2025-05-09 15:17:35,777 - __main__ - INFO - Processing query with agent
+2025-05-09 15:17:43,656 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-09 15:17:44,366 - __main__ - INFO - Successfully processed query
+2025-05-09 15:18:59,323 - __main__ - INFO - Received query request
+2025-05-09 15:18:59,323 - __main__ - INFO - Processing query with agent
+2025-05-09 15:19:04,747 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-09 15:19:06,009 - __main__ - INFO - Successfully processed query
+2025-05-09 15:20:59,007 - __main__ - INFO - Received query request
+2025-05-09 15:20:59,009 - __main__ - INFO - Processing query with agent
+2025-05-09 15:21:04,093 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-09 15:21:05,418 - __main__ - INFO - Successfully processed query
+2025-05-09 15:21:18,976 - __main__ - INFO - Received query request
+2025-05-09 15:21:18,977 - __main__ - INFO - Processing query with agent
+2025-05-09 15:21:32,743 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-09 15:21:33,458 - __main__ - ERROR - Error processing query: list index out of range
+2025-05-09 15:23:29,140 - __main__ - INFO - Received query request
+2025-05-09 15:23:29,141 - __main__ - INFO - Processing query with agent
+2025-05-09 15:23:35,080 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-09 15:23:36,345 - __main__ - ERROR - Error processing query: list index out of range
+2025-05-09 15:24:05,532 - __main__ - INFO - Received query request
+2025-05-09 15:24:05,533 - __main__ - INFO - Processing query with agent
+2025-05-09 15:24:13,932 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-09 15:24:14,656 - __main__ - ERROR - Error processing query: list index out of range
+2025-05-09 15:26:00,143 - __main__ - INFO - Received query request
+2025-05-09 15:26:00,145 - __main__ - INFO - Processing query with agent
+2025-05-09 15:26:07,486 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-09 15:26:08,307 - __main__ - INFO - Successfully processed query

@@ -38,6 +38,7 @@ export interface ChatQuery {
 export interface QuoteResponse {
   amountOut: string;
   priceImpact: string;
+  text: string;
 }
 
 export interface TransactionData {

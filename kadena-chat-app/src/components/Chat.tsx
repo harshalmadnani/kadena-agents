@@ -92,7 +92,7 @@ const Chat: React.FC = () => {
       const quoteResponse = response as QuoteResponse;
       return (
         `### Quote Details\n` +
-        `- **Output Amount:** ${quoteResponse.amountOut}\n` +
+        `- **${quoteResponse.text}:** ${quoteResponse.amountOut}\n` +
         `- **Price Impact:** ${quoteResponse.priceImpact}%\n`
       );
     }

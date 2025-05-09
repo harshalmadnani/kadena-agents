@@ -286,6 +286,7 @@ def run_kadena_agent_with_context(query: str, history: List[str] = None) -> Dict
     elif isinstance(response, AgentActionMessageLog):
         tool_input = response.tool_input
         tool = response.tool
+        print("Using " + tool)
         if tool == 'kadena_analysis':
             tool_output = KadenaAnalysisTool()._run(query=tool_input['query'], systemPrompt=tool_input['systemPrompt'])
             
@@ -337,7 +338,11 @@ def run_kadena_agent_with_context(query: str, history: List[str] = None) -> Dict
                 )
                 result = error_explanation.content
             else:
-                result = tool_output
+                if tool_input['endpoint'] == 'quote':
+                    result ={ **tool_output , 
+                             "text": "Quote in terms of " + tool_input['tokenOutAddress']}
+                else:
+                    result = tool_output
 
     # Add new conversation to history
     history.extend([
