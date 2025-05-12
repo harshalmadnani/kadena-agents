@@ -1,118 +1,157 @@
-// DCA Trading Agent for Kadena Blockchain
-// Buys 1 zUSD using KDA every 30 minutes if 1 KDA > 0.6 zUSD
+// Baseline function for Kadena blockchain transactions
+// This code provides the infrastructure for:
+// 1. Retrieving keys from AWS KMS
+// 2. Transaction signing
+// 3. Transaction submission
+// The AI model should focus on implementing the transaction creation logic
 
-const kadenaApi = require("./kadenaApi"); // adjust path as needed
+const { KMSClient, DecryptCommand } = require("@aws-sdk/client-kms");
+const { createHash } = require("crypto");
+const { sign } = require("@kadena/cryptography-utils");
+const { Pact } = require("@kadena/client");
+require("dotenv").config();
 
-// Configuration
-const CHAIN_ID = "2";
-const KDA_TOKEN = "coin";
-const USD_TOKEN = "n_b742b4e9c600892af545afb408326e82a6c0c6ed.zUSD";
-const USD_PER_TRADE = "1"; // buy 1 zUSD each time
-const PRICE_THRESHOLD = 0.6; // in zUSD per KDA
-const SLIPPAGE = 0.005; // 0.5%
-const INTERVAL_MS = 15 * 1000; // 15 seconds
-
-// Initialize API key from env
-/**
- * Get current market price of 1 KDA in zUSD
- * @returns {Promise<number>}
- */
-async function getKdaPriceInUsd() {
-  const quoteRes = await kadenaApi.quote({
-    tokenInAddress: KDA_TOKEN,
-    tokenOutAddress: USD_TOKEN,
-    amountIn: "1",
-    chainId: CHAIN_ID,
-  });
-  return parseFloat(quoteRes.amountOut);
-}
+// Initialize AWS KMS client
+const kmsClient = new KMSClient({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
 
 /**
- * Get required KDA to buy a given amount of zUSD
- * @param {string} usdAmount
- * @returns {Promise<number>}
+ * Retrieves and decrypts the private key from AWS KMS
  */
-async function getRequiredKdaForUsd(usdAmount) {
-  const quoteRes = await kadenaApi.quote({
-    tokenInAddress: KDA_TOKEN,
-    tokenOutAddress: USD_TOKEN,
-    amountOut: usdAmount,
-    chainId: CHAIN_ID,
-  });
-  return parseFloat(quoteRes.amountIn);
-}
-
-/**
- * Execute the swap: KDA -> zUSD
- * @param {string} usdAmount
- * @param {string} account
- * @returns {Promise<Object>}
- */
-async function executeSwap(usdAmount, account) {
-  return await kadenaApi.swap({
-    tokenInAddress: KDA_TOKEN,
-    tokenOutAddress: USD_TOKEN,
-    account: account,
-    amountOut: usdAmount,
-    slippage: SLIPPAGE,
-    chainId: CHAIN_ID,
-  });
-}
-
-/**
- * Start the DCA agent
- * @param {Object} params
- * @param {string} params.account - "k:..." Kadena account key
- * @param {Object} params.balances - User balances, e.g. { coin: "123.45", ... }
- */
-function startDcaAgent({ account, balances }) {
-  let kdaBalance = parseFloat(balances[KDA_TOKEN] || "0");
-
-  // perform one iteration: price check + possible swap
-  async function iteration() {
-    try {
-      const price = await getKdaPriceInUsd();
-      console.log(`[DCA] Current KDA price: ${price} zUSD`);
-
-      if (price <= PRICE_THRESHOLD) {
-        console.log(
-          `[DCA] Price below threshold (${PRICE_THRESHOLD}), skipping trade.`
-        );
-        return;
-      }
-
-      const requiredKda = await getRequiredKdaForUsd(USD_PER_TRADE);
-      console.log(`[DCA] KDA needed for 1 zUSD: ${requiredKda}`);
-
-      if (requiredKda > kdaBalance) {
-        console.log("[DCA] Insufficient KDA balance, stopping agent.");
-        clearInterval(timerId);
-        return;
-      }
-
-      // execute swap
-      const tx = await executeSwap(USD_PER_TRADE, account);
-      console.log("[DCA] Swap executed:", tx);
-
-      // deduct spent KDA from local balance
-      kdaBalance -= requiredKda;
-      console.log(`[DCA] Remaining KDA balance (approx): ${kdaBalance}`);
-
-      if (kdaBalance <= 0) {
-        console.log("[DCA] KDA depleted, stopping agent.");
-        clearInterval(timerId);
-      }
-    } catch (err) {
-      console.error("[DCA] Error in iteration:", err.message);
+async function getKeysFromKMS() {
+  try {
+    if (!process.env.ENCRYPTED_PRIVATE_KEY) {
+      throw new Error("ENCRYPTED_PRIVATE_KEY environment variable is not set");
     }
+
+    const command = new DecryptCommand({
+      CiphertextBlob: Buffer.from(process.env.ENCRYPTED_PRIVATE_KEY, "base64"),
+    });
+
+    const response = await kmsClient.send(command);
+    const privateKey = response.Plaintext.toString("utf-8");
+
+    // Validate the private key format
+    if (!/^[0-9a-f]{64}$/.test(privateKey)) {
+      throw new Error(
+        `Invalid private key format - should be 64 hex characters, got length ${privateKey.length}`
+      );
+    }
+
+    // Return the key pair
+    return {
+      secretKey: privateKey,
+      publicKey:
+        "38c0944b62d06a1c16fde2556a5e2ee3872efe9095e0050c8d16819f7306d382", // This should be derived from the private key
+    };
+  } catch (error) {
+    console.error("Error retrieving keys from KMS:", error);
+    throw new Error(`Failed to retrieve keys from KMS: ${error.message}`);
   }
-
-  // run first iteration immediately
-  iteration();
-
-  // schedule subsequent iterations
-  const timerId = setInterval(iteration, INTERVAL_MS);
 }
 
-// Export the agent entrypoint
-module.exports = { startDcaAgent };
+/**
+ * Signs a transaction using the provided key pair
+ */
+async function signTransaction(transaction, keyPair) {
+  try {
+    // Convert transaction to string if it's not already
+    const txString =
+      typeof transaction === "string"
+        ? transaction
+        : JSON.stringify(transaction);
+
+    // Create a hash of the transaction
+    const hash = transaction.hash;
+
+    // Sign the hash with the key pair
+    const signature = sign(hash, keyPair);
+
+    return signature;
+  } catch (error) {
+    console.error("Error signing transaction:", error);
+    throw new Error(`Failed to sign transaction: ${error.message}`);
+  }
+}
+
+/**
+ * Submits a signed transaction to the Kadena blockchain
+ */
+async function submitTransaction(signedTransaction) {
+  try {
+    // Create a Pact transaction
+    const pact = new Pact();
+
+    // TODO: Configure the Pact transaction with the signed transaction data
+    // This will be filled in by the AI model
+    console.log(
+      "Submitting transaction to Kadena blockchain:",
+      signedTransaction
+    );
+
+    // Mock response for now
+    return {
+      success: true,
+      transactionId: "mock-transaction-id",
+    };
+  } catch (error) {
+    console.error("Error submitting transaction:", error);
+    throw new Error(`Failed to submit transaction: ${error.message}`);
+  }
+}
+
+/**
+ * Main baseline function that orchestrates the entire process
+ */
+async function baselineFunction() {
+  try {
+    // 1. Retrieve keys from KMS
+    console.log("Retrieving keys from KMS...");
+    const keyPair = await getKeysFromKMS();
+    console.log("Keys retrieved successfully");
+
+    // 2. Create transaction (placeholder)
+    console.log("Creating transaction...");
+
+    // ENTER CODE HERE
+
+    console.log("Transaction created:", transaction);
+
+    // 3. Sign the transaction
+    console.log("Signing transaction...");
+    const signature = await signTransaction(transaction, keyPair);
+    console.log("Transaction signed successfully");
+
+    // 4. Submit the transaction
+    console.log("Submitting transaction...");
+    const result = await submitTransaction({
+      ...transaction,
+      signature,
+    });
+    console.log("Transaction submitted successfully:", result);
+
+    return result;
+  } catch (error) {
+    console.error("Error in baseline function:", error);
+    throw error;
+  }
+}
+
+// Example usage
+if (require.main === module) {
+  baselineFunction()
+    .then((result) => console.log("Baseline function completed:", result))
+    .catch((error) => console.error("Baseline function failed:", error));
+}
+
+module.exports = {
+  baselineFunction,
+  getKeysFromKMS,
+  signTransaction,
+  submitTransaction,
+};
