@@ -17,3 +17,6 @@ kadena-api/.DS_Store
 kadena-chat-app/pnpm-lock.yaml
 kadena-chat-app/.env
 kadena-api/pnpm-lock.yaml
+kadena-trader/.env
+/kadena-trader/node_modules
+kadena-trader/pnpm-lock.yaml
