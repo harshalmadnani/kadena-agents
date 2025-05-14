@@ -45,7 +45,7 @@ class CodeRequest(BaseModel):
     prompt: str
     history: Optional[List[str]] = Field(default_factory=list)
 
-@app.get("/health")
+@app.get("/")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
