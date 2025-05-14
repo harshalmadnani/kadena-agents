@@ -3,18 +3,24 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node call.js",
+    "setup": "node setup-permissions.js",
+    "decrypt": "node test-decrypt.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.806.0",
+    "@aws-sdk/client-iam": "^3.806.0",
     "@aws-sdk/client-kms": "^3.806.0",
-    "@kadena/client": "^1.17.1",
-    "@kadena/cryptography-utils": "^0.4.4",
+    "@kadena/client": "latest",
+    "@kadena/cryptography-utils": "latest",
     "@kadena/hd-wallet": "^0.6.1",
-    "dotenv": "^16.5.0"
+    "@kadena/types": "^0.7.0",
+    "dotenv": "latest"
   }
 }

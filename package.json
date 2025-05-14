@@ -1,0 +1,24 @@
+{
+  "name": "kadena-agents",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "aws-kms-guide.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anshumantekriwal/kadena-agents.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/anshumantekriwal/kadena-agents/issues"
+  },
+  "homepage": "https://github.com/anshumantekriwal/kadena-agents#readme",
+  "description": "",
+  "dependencies": {
+    "@kadena/client": "^1.17.1"
+  }
+}

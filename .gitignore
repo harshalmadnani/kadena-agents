@@ -20,3 +20,6 @@ kadena-api/pnpm-lock.yaml
 kadena-trader/.env
 /kadena-trader/node_modules
 kadena-trader/pnpm-lock.yaml
+/node_modules
+package-lock.json
+/kadena-trader/__pycache__
