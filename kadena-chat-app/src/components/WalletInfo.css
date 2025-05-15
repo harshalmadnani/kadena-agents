@@ -416,3 +416,14 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.chain-warning {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  border: 1px solid #ffeeba;
+  font-size: 0.9em;
+  text-align: center;
+}

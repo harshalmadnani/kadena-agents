@@ -33,6 +33,9 @@ const WalletInfo: React.FC = () => {
 
   return (
     <div className="wallet-info">
+      <div className="chain-warning">
+        ⚠️ AgentK is on Kadena Chain 2 - Make sure to only deposit on mainnet chain 2
+      </div>
       <h3>
         <span>Kadena Wallet</span>
         {isLoading && <span className="loading-indicator">Refreshing...</span>}
