@@ -5,7 +5,7 @@ import { tokens } from "../utils/tokens";
 import "./WalletInfo.css";
 
 const WalletInfo: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { balances, isLoading, error, refreshBalances } = useWallet();
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
@@ -93,6 +93,9 @@ const WalletInfo: React.FC = () => {
           )}
         </div>
       </div>
+      <button className="logout-button" onClick={logout} style={{ marginTop: '1rem', width: '100%' }}>
+        Logout
+      </button>
     </div>
   );
 };

@@ -12,6 +12,7 @@ import "./App.css";
 import { WalletProvider } from "./context/WalletContext";
 import Navbar from "./components/Navbar";
 import AgentLauncher from "./components/agent/AgentLauncher";
+import Terminal from "./components/terminal/Terminal";
 
 // Protected route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -71,6 +72,14 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <AgentLauncher />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/terminal"
+          element={
+            <ProtectedRoute>
+              <Terminal />
             </ProtectedRoute>
           }
         />

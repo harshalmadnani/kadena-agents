@@ -6,6 +6,7 @@ import './SocialAgentLauncher.css';
 import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import AgentLauncher from './AgentLauncher';
+import Navbar from '../Navbar';
 
 const supabaseUrl = 'https://wbsnlpviggcnwqfyfobh.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indic25scHZpZ2djbndxZnlmb2JoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc2NTcwNiwiZXhwIjoyMDU0MzQxNzA2fQ.tr6PqbiAXQYSQSpG2wS6I4DZfV1Gc3dLXYhKwBrJLS0';
@@ -655,316 +656,945 @@ const SocialAgentLauncher = () => {
   }
 
   return (
-    <div className="agent-launcher-container">
-      <div className="progress-bar-container">
-        <div 
-          className="progress-bar"
-          style={{
-            width: `${((currentStep + 1) / slides.length) * 100}%`,
-            height: '4px',
-            backgroundColor: '#FFFFFF',
-            borderRadius: '2px',
-            transition: 'width 0.3s ease-in-out'
-          }}
-        />
-        <div style={{ 
-          color: 'white', 
-          fontSize: '14px', 
-          marginTop: '8px',
-          textAlign: 'right'
-        }}>
-          {`Step ${currentStep + 1} of ${slides.length}`}
+    <>
+      <Navbar />
+      <div className="agent-launcher-container">
+        <div className="progress-bar-container">
+          <div 
+            className="progress-bar"
+            style={{
+              width: `${((currentStep + 1) / slides.length) * 100}%`,
+              height: '4px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '2px',
+              transition: 'width 0.3s ease-in-out'
+            }}
+          />
+          <div style={{ 
+            color: 'white', 
+            fontSize: '14px', 
+            marginTop: '8px',
+            textAlign: 'right'
+          }}>
+            {`Step ${currentStep + 1} of ${slides.length}`}
+          </div>
         </div>
-      </div>
 
-      {(
-        <IconButton 
-          className="back-button"
-          onClick={handleBack}
-          sx={{ 
-            color: 'white',
-            position: 'absolute',
-            top: '20px',
-            left: '40px',
-            zIndex: 1,
-            '@media (max-width: 768px)': {
-              display: 'none'
-            }
-          }}
-        >
-          <ArrowBackIcon />
-        </IconButton>
-      )}
-      
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentStep}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.5 }}
-          className="slide-container"
-          onExitComplete={() => setImageLoaded(false)}
-        >
-          <div className="slide-content">
-            <div className="image-container" style={{ position: 'relative' }}>
-              <div 
-                style={{ 
-                  width: '90%',
-                  height: '50%',
-                  backgroundColor: '#333',
-                  borderRadius: '12px',
-                  display: imageLoaded ? 'none' : 'block'
-                }}
-              />
-              <img 
-                src={slides[currentStep].image} 
-                alt={`Step ${currentStep + 1}`}
-                className="slide-image"
-                style={{ 
-                  width: '90%',
-                  height: '50%',
-                  objectFit: "contain",
-                  borderRadius: '12px',
-                  display: imageLoaded ? 'block' : 'none'
-                }}
-                loading="eager"
-                onLoad={handleImageLoad}
-              />
-            </div>
-            
-            <div className="content-container">
-              <h2 style={{ marginBottom: '1.5rem' }}>{slides[currentStep].title}</h2>
-              {slides[currentStep].hasForm ? (
-                <>
-                  <p>{slides[currentStep].content}</p>
-                  <input
-                    type="text"
-                    value={agentName}
-                    onChange={(e) => setAgentName(e.target.value)}
-                    placeholder="Enter agent name"
-                    style={{
-                      width: '90%',
-                      padding: '10px 12px',
-                      marginBottom: '16px',
-                      backgroundColor: '#1a1a1a',
-                      border: 'none',
-                      borderRadius: '10px',
-                      color: 'white',
-                      height: '40px',
-                      fontSize: '14px'
-                    }}
-                  />
-                  <p>{`What should people know about ${agentName || 'your agent'}?`}</p>
-                  <textarea
-                    value={agentDescription}
-                    onChange={(e) => setAgentDescription(e.target.value)}
-                    placeholder="Add some description about the agent that everyone will see"
-                    style={{
-                      width: '90%',
-                      padding: '12px',
-                      marginBottom: '20px',
-                      backgroundColor: '#1a1a1a',
-                      border: 'none',
-                      borderRadius: '10px',
-                      color: 'white',
-                      minHeight: '50%',
-                      resize: 'vertical'
-                    }}
-                  />
-                </>
-              ) : slides[currentStep].hasUpload ? (
-                <>
-                  <p>{slides[currentStep].content}</p>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                  />
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '20px', marginBottom: '20px' }}>
-                    <button 
-                      className="next-button"
-                      onClick={handleUploadClick}
-                      style={{ flex: 1 }}
-                    >
-                      Upload
-                    </button>
-                    <button 
-                      className="next-button"
-                      onClick={handleNext}
-                      style={{ 
-                        flex: 1,
-                        backgroundColor: 'transparent',
-                        border: '1px solid white',
-                        color:'#FFF'
+        {(
+          <IconButton 
+            className="back-button"
+            onClick={handleBack}
+            sx={{ 
+              color: 'white',
+              position: 'absolute',
+              top: '20px',
+              left: '40px',
+              zIndex: 1,
+              '@media (max-width: 768px)': {
+                display: 'none'
+              }
+            }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
+        )}
+        
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5 }}
+            className="slide-container"
+            onExitComplete={() => setImageLoaded(false)}
+          >
+            <div className="slide-content">
+              <div className="image-container" style={{ position: 'relative' }}>
+                <div 
+                  style={{ 
+                    width: '90%',
+                    height: '50%',
+                    backgroundColor: '#333',
+                    borderRadius: '12px',
+                    display: imageLoaded ? 'none' : 'block'
+                  }}
+                />
+                <img 
+                  src={slides[currentStep].image} 
+                  alt={`Step ${currentStep + 1}`}
+                  className="slide-image"
+                  style={{ 
+                    width: '90%',
+                    height: '50%',
+                    objectFit: "contain",
+                    borderRadius: '12px',
+                    display: imageLoaded ? 'block' : 'none'
+                  }}
+                  loading="eager"
+                  onLoad={handleImageLoad}
+                />
+              </div>
+              
+              <div className="content-container">
+                <h2 style={{ marginBottom: '1.5rem' }}>{slides[currentStep].title}</h2>
+                {slides[currentStep].hasForm ? (
+                  <>
+                    <p>{slides[currentStep].content}</p>
+                    <input
+                      type="text"
+                      value={agentName}
+                      onChange={(e) => setAgentName(e.target.value)}
+                      placeholder="Enter agent name"
+                      style={{
+                        width: '90%',
+                        padding: '10px 12px',
+                        marginBottom: '16px',
+                        backgroundColor: '#1a1a1a',
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: 'white',
+                        height: '40px',
+                        fontSize: '14px'
                       }}
-                    >
-                      Maybe later
-                    </button>
-                  </div>
-                  {agentImage && (
-                    <>
-                      <p style={{ marginTop: '10px', color: 'green' }}>
-                        Image uploaded: {agentImage.name}
-                      </p>
+                    />
+                    <p>{`What should people know about ${agentName || 'your agent'}?`}</p>
+                    <textarea
+                      value={agentDescription}
+                      onChange={(e) => setAgentDescription(e.target.value)}
+                      placeholder="Add some description about the agent that everyone will see"
+                      style={{
+                        width: '90%',
+                        padding: '12px',
+                        marginBottom: '20px',
+                        backgroundColor: '#1a1a1a',
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: 'white',
+                        minHeight: '50%',
+                        resize: 'vertical'
+                      }}
+                    />
+                  </>
+                ) : slides[currentStep].hasUpload ? (
+                  <>
+                    <p>{slides[currentStep].content}</p>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                    />
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '20px', marginBottom: '20px' }}>
+                      <button 
+                        className="next-button"
+                        onClick={handleUploadClick}
+                        style={{ flex: 1 }}
+                      >
+                        Upload
+                      </button>
                       <button 
                         className="next-button"
                         onClick={handleNext}
-                        style={{ marginTop: '20px' }}
+                        style={{ 
+                          flex: 1,
+                          backgroundColor: 'transparent',
+                          border: '1px solid white',
+                          color:'#FFF'
+                        }}
                       >
-                        Continue
+                        Maybe later
                       </button>
-                    </>
-                  )}
-                </>
-              ) : slides[currentStep].hasPrompt ? (
-                <div style={{ width: '90%' }}>
-                  <p>{slides[currentStep].content}</p>
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Be as specific as possible"
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      marginBottom: '20px',
-                      backgroundColor: '#1a1a1a',
-                      border: 'none',
-                      borderRadius: '10px',
-                      color: 'white',
-                      minHeight: '150px',
-                      resize: 'vertical',
-                      fontSize: '14px'
-                    }}
-                  />
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '8px',
-                    marginBottom: '20px'
-                  }}>
+                    </div>
+                    {agentImage && (
+                      <>
+                        <p style={{ marginTop: '10px', color: 'green' }}>
+                          Image uploaded: {agentImage.name}
+                        </p>
+                        <button 
+                          className="next-button"
+                          onClick={handleNext}
+                          style={{ marginTop: '20px' }}
+                        >
+                          Continue
+                        </button>
+                      </>
+                    )}
+                  </>
+                ) : slides[currentStep].hasPrompt ? (
+                  <div style={{ width: '90%' }}>
+                    <p>{slides[currentStep].content}</p>
+                    <textarea
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      placeholder="Be as specific as possible"
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        marginBottom: '20px',
+                        backgroundColor: '#1a1a1a',
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: 'white',
+                        minHeight: '150px',
+                        resize: 'vertical',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px',
+                      marginBottom: '20px'
+                    }}>
+                      <button 
+                        onClick={handleImprovePrompt}
+                        disabled={!prompt.trim() || isImprovingPrompt}
+                        style={{ 
+                          cursor: prompt.trim() && !isImprovingPrompt ? 'pointer' : 'default',
+                          backgroundColor: prompt.trim() && !isImprovingPrompt ? 'white' : '#1a1a1a',
+                          padding: '8px 16px',
+                          borderRadius: '20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          border: 'none',
+                          color: prompt.trim() && !isImprovingPrompt ? '#000' : '#666',
+                          fontSize: '14px',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {isImprovingPrompt ? 'Improving...' : 'Improve Prompt'}
+                      </button>
+                    </div>
+                    
                     <button 
-                      onClick={handleImprovePrompt}
-                      disabled={!prompt.trim() || isImprovingPrompt}
-                      style={{ 
-                        cursor: prompt.trim() && !isImprovingPrompt ? 'pointer' : 'default',
-                        backgroundColor: prompt.trim() && !isImprovingPrompt ? 'white' : '#1a1a1a',
-                        padding: '8px 16px',
-                        borderRadius: '20px',
+                      className="next-button"
+                      onClick={handleNext}
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'white',
+                        color: 'black',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        marginTop: '20px'
+                      }}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                ) : slides[currentStep].hasTrainingMaterials ? (
+                  <div style={{ width: '90%' }}>
+                    <p style={{ marginBottom: '20px' }}>{slides[currentStep].content}</p>
+                    
+                    {/* File upload section */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <p style={{ 
+                        marginBottom: '12px', 
+                        fontSize: '16px',
+                        fontWeight: '500' 
+                      }}>Upload PDFs or text files</p>
+                      
+                      <input
+                        type="file"
+                        ref={trainingFileInputRef}
+                        onChange={handleTrainingFileUpload}
+                        accept=".pdf,.txt,.md,.csv,.json"
+                        multiple
+                        style={{ display: 'none' }}
+                      />
+                      
+                      <button 
+                        onClick={handleTrainingFileUploadClick}
+                        style={{
+                          width: '100%',
+                          backgroundColor: '#1a1a1a',
+                          color: 'white',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          border: '1px dashed #666',
+                          cursor: 'pointer',
+                          marginBottom: '16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        Select files to upload
+                      </button>
+                      
+                      {/* Display uploaded files */}
+                      {trainingFiles.length > 0 && (
+                        <div style={{ marginTop: '16px' }}>
+                          <p style={{ 
+                            marginBottom: '12px', 
+                            fontSize: '14px',
+                            color: '#ccc' 
+                          }}>Uploaded files:</p>
+                          
+                          {trainingFiles.map((file, index) => (
+                            <div 
+                              key={index}
+                              style={{
+                                backgroundColor: '#1a1a1a',
+                                borderRadius: '8px',
+                                padding: '10px 12px',
+                                marginBottom: '8px',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '14px' }}>{file.name}</span>
+                                <span style={{ 
+                                  fontSize: '12px', 
+                                  color: '#999',
+                                  marginLeft: '8px' 
+                                }}>
+                                  ({(file.size / 1024 / 1024).toFixed(1)} MB)
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => handleRemoveTrainingFile(index)}
+                                style={{
+                                  backgroundColor: 'transparent',
+                                  border: 'none',
+                                  color: '#666',
+                                  cursor: 'pointer',
+                                  padding: '4px',
+                                  fontSize: '16px'
+                                }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Custom context text input */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <p style={{ 
+                        marginBottom: '12px', 
+                        fontSize: '16px',
+                        fontWeight: '500' 
+                      }}>Add additional context as text</p>
+                      
+                      <textarea
+                        value={customContext}
+                        onChange={(e) => setCustomContext(e.target.value)}
+                        placeholder="Enter any additional information, knowledge, or instructions you want your agent to learn"
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          backgroundColor: '#1a1a1a',
+                          border: 'none',
+                          borderRadius: '10px',
+                          color: 'white',
+                          minHeight: '120px',
+                          fontSize: '14px',
+                          marginBottom: '8px',
+                          resize: 'vertical'
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Tips section */}
+                    <div style={{ 
+                      backgroundColor: '#1a1a1a',
+                      borderRadius: '12px',
+                      padding: '16px',
+                      marginBottom: '24px'
+                    }}>
+                      <div style={{ 
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        border: 'none',
-                        color: prompt.trim() && !isImprovingPrompt ? '#000' : '#666',
-                        fontSize: '14px',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      {isImprovingPrompt ? 'Improving...' : 'Improve Prompt'}
-                    </button>
-                  </div>
-                  
-                  <button 
-                    className="next-button"
-                    onClick={handleNext}
-                    style={{
-                      width: '100%',
-                      backgroundColor: 'white',
-                      color: 'black',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: '500',
-                      marginTop: '20px'
-                    }}
-                  >
-                    Continue
-                  </button>
-                </div>
-              ) : slides[currentStep].hasTrainingMaterials ? (
-                <div style={{ width: '90%' }}>
-                  <p style={{ marginBottom: '20px' }}>{slides[currentStep].content}</p>
-                  
-                  {/* File upload section */}
-                  <div style={{ marginBottom: '24px' }}>
-                    <p style={{ 
-                      marginBottom: '12px', 
-                      fontSize: '16px',
-                      fontWeight: '500' 
-                    }}>Upload PDFs or text files</p>
-                    
-                    <input
-                      type="file"
-                      ref={trainingFileInputRef}
-                      onChange={handleTrainingFileUpload}
-                      accept=".pdf,.txt,.md,.csv,.json"
-                      multiple
-                      style={{ display: 'none' }}
-                    />
+                        marginBottom: '8px'
+                      }}>
+                        <p style={{ 
+                          margin: 0,
+                          fontSize: '14px',
+                          fontWeight: '500'
+                        }}>Tips for training your agent:</p>
+                      </div>
+                      <ul style={{ 
+                        margin: '0',
+                        paddingLeft: '24px',
+                        color: '#999',
+                        fontSize: '14px'
+                      }}>
+                        <li>PDFs should be less than 20MB in size</li>
+                        <li>Use high-quality, well-structured documents</li>
+                        <li>Include diverse materials to cover different aspects</li>
+                        <li>Text input can be used for specific instructions or knowledge</li>
+                      </ul>
+                    </div>
                     
                     <button 
-                      onClick={handleTrainingFileUploadClick}
+                      className="next-button"
+                      onClick={handleNext}
                       style={{
                         width: '100%',
-                        backgroundColor: '#1a1a1a',
-                        color: 'white',
-                        padding: '12px',
-                        borderRadius: '8px',
-                        border: '1px dashed #666',
+                        backgroundColor: 'white',
+                        color: 'black',
+                        padding: '14px',
+                        borderRadius: '12px',
+                        border: 'none',
                         cursor: 'pointer',
-                        marginBottom: '16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px'
+                        fontWeight: '500',
+                        fontSize: '16px'
                       }}
                     >
-                      Select files to upload
+                      Continue
                     </button>
-                    
-                    {/* Display uploaded files */}
-                    {trainingFiles.length > 0 && (
-                      <div style={{ marginTop: '16px' }}>
+                  </div>
+                ) : slides[currentStep].hasExamples ? (
+                  <div style={{ width: '90%' }}>
+                    <div style={{ marginBottom: '24px' }}>
+                      <p style={{ 
+                        marginBottom: '12px', 
+                        fontSize: '16px',
+                        fontWeight: '500' 
+                      }}>Example Conversations</p>
+                      
+                      {/* Q&A Input Section */}
+                      <div style={{ 
+                        backgroundColor: '#1a1a1a',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        marginBottom: '16px'
+                      }}>
+                        <input
+                          value={currentQuestion}
+                          onChange={(e) => setCurrentQuestion(e.target.value)}
+                          placeholder="Enter a question..."
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            backgroundColor: '#2a2a2a',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: 'white',
+                            marginBottom: '8px',
+                            fontSize: '14px'
+                          }}
+                        />
+                        <textarea
+                          value={currentAnswer}
+                          onChange={(e) => setCurrentAnswer(e.target.value)}
+                          placeholder="Enter the answer..."
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            backgroundColor: '#2a2a2a',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: 'white',
+                            minHeight: '80px',
+                            fontSize: '14px',
+                            marginBottom: '8px',
+                            resize: 'vertical'
+                          }}
+                        />
+                        <button
+                          onClick={handleAddQA}
+                          disabled={!currentQuestion.trim() || !currentAnswer.trim()}
+                          style={{
+                            backgroundColor: currentQuestion.trim() && currentAnswer.trim() ? 'white' : '#666',
+                            color: currentQuestion.trim() && currentAnswer.trim() ? 'black' : '#999',
+                            padding: '8px 16px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            cursor: currentQuestion.trim() && currentAnswer.trim() ? 'pointer' : 'default',
+                            width: '100%'
+                          }}
+                        >
+                          Add Q&A
+                        </button>
+                      </div>
+
+                      {/* Q&A List */}
+                      {qaList.map((qa, index) => (
+                        <div key={index} style={{
+                          backgroundColor: '#2a2a2a',
+                          borderRadius: '8px',
+                          padding: '12px',
+                          marginBottom: '8px',
+                          position: 'relative'
+                        }}>
+                          <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>Q: {qa.question}</p>
+                          <p style={{ margin: '0', color: '#ccc' }}>A: {qa.answer}</p>
+                          <button
+                            onClick={() => handleRemoveQA(index)}
+                            style={{
+                              position: 'absolute',
+                              top: '8px',
+                              right: '8px',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              color: '#666',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              fontSize: '14px'
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Posts Section */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <p style={{ 
+                        marginBottom: '12px',
+                        fontSize: '16px',
+                        fontWeight: '500'
+                      }}>Example Posts</p>
+
+                      {/* Post Input Section */}
+                      <div style={{ 
+                        backgroundColor: '#1a1a1a',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        marginBottom: '16px'
+                      }}>
+                        <textarea
+                          value={currentPost}
+                          onChange={(e) => setCurrentPost(e.target.value)}
+                          placeholder="Enter an example post..."
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            backgroundColor: '#2a2a2a',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: 'white',
+                            minHeight: '100px',
+                            fontSize: '14px',
+                            marginBottom: '8px',
+                            resize: 'vertical'
+                          }}
+                        />
+                        <button
+                          onClick={handleAddPost}
+                          disabled={!currentPost.trim()}
+                          style={{
+                            backgroundColor: currentPost.trim() ? 'white' : '#666',
+                            color: currentPost.trim() ? 'black' : '#999',
+                            padding: '8px 16px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            cursor: currentPost.trim() ? 'pointer' : 'default',
+                            width: '100%'
+                          }}
+                        >
+                          Add Post
+                        </button>
+                      </div>
+
+                      {/* Posts List */}
+                      {postList.map((post, index) => (
+                        <div key={index} style={{
+                          backgroundColor: '#2a2a2a',
+                          borderRadius: '8px',
+                          padding: '12px',
+                          marginBottom: '8px',
+                          position: 'relative'
+                        }}>
+                          <p style={{ margin: '0' }}>{post}</p>
+                          <button
+                            onClick={() => handleRemovePost(index)}
+                            style={{
+                              position: 'absolute',
+                              top: '8px',
+                              right: '8px',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              color: '#666',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              fontSize: '14px'
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Tips Section */}
+                    <div style={{ 
+                      backgroundColor: '#1a1a1a',
+                      borderRadius: '12px',
+                      padding: '16px',
+                      marginBottom: '24px'
+                    }}>
+                      <div style={{ 
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '8px'
+                      }}>
                         <p style={{ 
-                          marginBottom: '12px', 
+                          margin: 0,
                           fontSize: '14px',
-                          color: '#ccc' 
-                        }}>Uploaded files:</p>
-                        
-                        {trainingFiles.map((file, index) => (
-                          <div 
+                          fontWeight: '500'
+                        }}>Tips for better results:</p>
+                      </div>
+                      <ul style={{ 
+                        margin: '0',
+                        paddingLeft: '24px',
+                        color: '#999',
+                        fontSize: '14px'
+                      }}>
+                        <li>Add diverse examples to show different interaction styles</li>
+                        <li>Include both technical and casual conversations</li>
+                        <li>Use emojis and formatting to make posts engaging</li>
+                        <li>Show how to handle different types of questions</li>
+                      </ul>
+                    </div>
+
+                  </div>
+                ) : slides[currentStep].hasDataSources ? (
+                  <div style={{ width: '90%' }}>
+                    <p>{slides[currentStep].content}</p>
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="What are you looking for?"
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        backgroundColor: '#1a1a1a',
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: 'white',
+                        height: '40px',
+                        fontSize: '14px',
+                        marginBottom: '16px'
+                      }}
+                    />
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      marginBottom: '20px'
+                    }}>
+                      {filteredSources.map((source, index) => (
+                        <span
+                          key={index}
+                          onClick={() => handleSourceClick(source)}
+                          style={{
+                            backgroundColor: '#1a1a1a',
+                            padding: '8px 16px',
+                            borderRadius: '20px',
+                            color: 'white',
+                            fontSize: '14px',
+                            cursor: 'pointer',
+                            border: selectedSources.includes(source) ? '1px solid white' : '1px solid transparent'
+                          }}
+                        >
+                          {source}
+                        </span>
+                      ))}
+                    </div>
+                    
+                    <button 
+                      className="next-button"
+                      onClick={handleNext}
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'white',
+                        color: 'black',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        marginTop: '20px'
+                      }}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                ) : slides[currentStep].hasPostingConfig ? (
+                  <div style={{ width: '90%' }}>
+                    <p style={{ marginBottom: '20px' }}>Choose the clients for posting:</p>
+                    <div style={{
+                      display: 'flex',
+                      gap: '10px',
+                      marginBottom: '20px'
+                    }}>
+                      <button
+                        onClick={() => setPostingClients(prev => 
+                          prev.includes('terminal') ? prev.filter(c => c !== 'terminal') : [...prev, 'terminal']
+                        )}
+                        style={{
+                          backgroundColor: postingClients.includes('terminal') ? '#fff' : '#1a1a1a',
+                          padding: '8px 16px',
+                          borderRadius: '20px',
+                          color: postingClients.includes('terminal') ? '#000' : '#fff',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '14px'
+                        }}
+                      >
+                        Xade Terminal
+                      </button>
+                      <button
+                        onClick={() => setPostingClients(prev => 
+                          prev.includes('x') ? prev.filter(c => c !== 'x') : [...prev, 'x']
+                        )}
+                        style={{
+                          backgroundColor: postingClients.includes('x') ? '#fff' : '#1a1a1a',
+                          padding: '8px 16px',
+                          borderRadius: '20px',
+                          color: postingClients.includes('x') ? '#000' : '#fff',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '14px'
+                        }}
+                      >
+                        X
+                      </button>
+                    </div>
+                    
+                    <p style={{ marginBottom: '10px' }}>Choose posting interval (minutes):</p>
+                    <input
+                      type="number"
+                      value={postingInterval}
+                      onChange={(e) => setPostingInterval(e.target.value)}
+                      min="2"
+                      placeholder="60"
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        backgroundColor: '#1a1a1a',
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: 'white',
+                        height: '40px',
+                        fontSize: '14px',
+                        marginBottom: '20px'
+                      }}
+                    />
+                    
+                    <p style={{ marginBottom: '10px' }}>What should your agent post about?</p>
+                    <textarea
+                      value={postingTopics}
+                      onChange={(e) => setPostingTopics(e.target.value)}
+                      placeholder="Enter topics, themes, or specific content your agent should post about. Be as specific as possible."
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        backgroundColor: '#1a1a1a',
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: 'white',
+                        minHeight: '100px',
+                        fontSize: '14px',
+                        marginBottom: '8px',
+                        resize: 'vertical'
+                      }}
+                    />
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px',
+                      marginBottom: '20px'
+                    }}>
+                      <button 
+                        onClick={async () => {
+                          if (!postingTopics.trim()) return;
+                          
+                          try {
+                            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                              method: 'POST',
+                              headers: {
+                                'Authorization': `Bearer ${process.env.REACT_APP_GROQ_API_KEY}`,
+                                'Content-Type': 'application/json'
+                              },
+                              body: JSON.stringify({
+                                model: 'mixtral-8x7b-32768',
+                                messages: [
+                                  {
+                                    role: 'system',
+                                    content: 'You are an expert at improving AI agent posting topics. Make the topics more specific, detailed, and effective while maintaining the original intent.'
+                                  },
+                                  {
+                                    role: 'user',
+                                    content: `Please improve these posting topics: ${postingTopics}`
+                                  }
+                                ],
+                                temperature: 0.7,
+                                max_tokens: 1024
+                              })
+                            });
+
+                            if (!response.ok) {
+                              throw new Error('Failed to improve posting topics');
+                            }
+
+                            const data = await response.json();
+                            const improvedTopics = data.choices[0].message.content;
+                            setPostingTopics(improvedTopics);
+                          } catch (error) {
+                            console.error('Error improving posting topics:', error);
+                          }
+                        }}
+                        disabled={!postingTopics.trim()}
+                        style={{ 
+                          cursor: postingTopics.trim() ? 'pointer' : 'default',
+                          backgroundColor: postingTopics.trim() ? 'white' : '#1a1a1a',
+                          padding: '8px 16px',
+                          borderRadius: '20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          border: 'none',
+                          color: postingTopics.trim() ? '#000' : '#666',
+                          fontSize: '14px',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        Improve Topics
+                      </button>
+                    </div>
+                    
+                    <button 
+                      className="next-button"
+                      onClick={handleNext}
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'white',
+                        color: 'black',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        marginTop: '20px'
+                      }}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                ) : slides[currentStep].hasChatConfig ? (
+                  <div style={{ width: '90%' }}>
+                    <p style={{ marginBottom: '20px' }}>Choose the clients for interaction:</p>
+                    <div style={{
+                      display: 'flex',
+                      gap: '10px',
+                      marginBottom: '20px'
+                    }}>
+                      <button
+                        onClick={() => setChatClients(prev => 
+                          prev.includes('terminal') ? prev.filter(c => c !== 'terminal') : [...prev, 'terminal']
+                        )}
+                        style={{
+                          backgroundColor: chatClients.includes('terminal') ? '#fff' : '#1a1a1a',
+                          padding: '8px 16px',
+                          borderRadius: '20px',
+                          color: chatClients.includes('terminal') ? '#000' : '#fff',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '14px'
+                        }}
+                      >
+                        Xade Terminal
+                      </button>
+                      <button
+                        onClick={() => setChatClients(prev => 
+                          prev.includes('x') ? prev.filter(c => c !== 'x') : [...prev, 'x']
+                        )}
+                        style={{
+                          backgroundColor: chatClients.includes('x') ? '#fff' : '#1a1a1a',
+                          padding: '8px 16px',
+                          borderRadius: '20px',
+                          color: chatClients.includes('x') ? '#000' : '#fff',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '14px'
+                        }}
+                      >
+                        X
+                      </button>
+                    </div>
+                    
+                    <div style={{ marginBottom: '20px' }}>
+                      <p style={{ marginBottom: '10px' }}>Enter usernames to reply to and join their spaces:</p>
+                      <div style={{ 
+                        display: 'flex',
+                        gap: '8px',
+                        marginBottom: '12px'
+                      }}>
+                        <input
+                          type="text"
+                          value={currentUsername}
+                          onChange={(e) => setCurrentUsername(e.target.value)}
+                          placeholder="Enter username without @"
+                          style={{
+                            flex: 1,
+                            padding: '12px',
+                            backgroundColor: '#1a1a1a',
+                            border: 'none',
+                            borderRadius: '10px',
+                            color: 'white',
+                            height: '40px',
+                            fontSize: '14px'
+                          }}
+                        />
+                        <button
+                          onClick={handleAddUsername}
+                          disabled={!currentUsername.trim()}
+                          style={{
+                            padding: '0 20px',
+                            backgroundColor: currentUsername.trim() ? 'white' : '#666',
+                            color: currentUsername.trim() ? 'black' : '#999',
+                            border: 'none',
+                            borderRadius: '10px',
+                            cursor: currentUsername.trim() ? 'pointer' : 'default'
+                          }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '8px'
+                      }}>
+                        {replyToUsernames.map((username, index) => (
+                          <div
                             key={index}
                             style={{
                               backgroundColor: '#1a1a1a',
-                              borderRadius: '8px',
-                              padding: '10px 12px',
-                              marginBottom: '8px',
+                              padding: '6px 12px',
+                              borderRadius: '20px',
                               display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center'
+                              alignItems: 'center',
+                              gap: '8px'
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '14px' }}>{file.name}</span>
-                              <span style={{ 
-                                fontSize: '12px', 
-                                color: '#999',
-                                marginLeft: '8px' 
-                              }}>
-                                ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                              </span>
-                            </div>
+                            <span>@{username}</span>
                             <button
-                              onClick={() => handleRemoveTrainingFile(index)}
+                              onClick={() => handleRemoveUsername(username)}
                               style={{
                                 backgroundColor: 'transparent',
                                 border: 'none',
                                 color: '#666',
                                 cursor: 'pointer',
-                                padding: '4px',
+                                padding: '0',
                                 fontSize: '16px'
                               }}
                             >
@@ -973,826 +1603,225 @@ const SocialAgentLauncher = () => {
                           </div>
                         ))}
                       </div>
-                    )}
-                  </div>
-                  
-                  {/* Custom context text input */}
-                  <div style={{ marginBottom: '24px' }}>
-                    <p style={{ 
-                      marginBottom: '12px', 
-                      fontSize: '16px',
-                      fontWeight: '500' 
-                    }}>Add additional context as text</p>
+                    </div>
                     
-                    <textarea
-                      value={customContext}
-                      onChange={(e) => setCustomContext(e.target.value)}
-                      placeholder="Enter any additional information, knowledge, or instructions you want your agent to learn"
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        backgroundColor: '#1a1a1a',
-                        border: 'none',
-                        borderRadius: '10px',
-                        color: 'white',
-                        minHeight: '120px',
-                        fontSize: '14px',
-                        marginBottom: '8px',
-                        resize: 'vertical'
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Tips section */}
-                  <div style={{ 
-                    backgroundColor: '#1a1a1a',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    marginBottom: '24px'
-                  }}>
-                    <div style={{ 
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '8px'
-                    }}>
-                      <p style={{ 
-                        margin: 0,
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}>Tips for training your agent:</p>
-                    </div>
-                    <ul style={{ 
-                      margin: '0',
-                      paddingLeft: '24px',
-                      color: '#999',
-                      fontSize: '14px'
-                    }}>
-                      <li>PDFs should be less than 20MB in size</li>
-                      <li>Use high-quality, well-structured documents</li>
-                      <li>Include diverse materials to cover different aspects</li>
-                      <li>Text input can be used for specific instructions or knowledge</li>
-                    </ul>
-                  </div>
-                  
-                  <button 
-                    className="next-button"
-                    onClick={handleNext}
-                    style={{
-                      width: '100%',
-                      backgroundColor: 'white',
-                      color: 'black',
-                      padding: '14px',
-                      borderRadius: '12px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: '500',
-                      fontSize: '16px'
-                    }}
-                  >
-                    Continue
-                  </button>
-                </div>
-              ) : slides[currentStep].hasExamples ? (
-                <div style={{ width: '90%' }}>
-                  <div style={{ marginBottom: '24px' }}>
-                    <p style={{ 
-                      marginBottom: '12px', 
-                      fontSize: '16px',
-                      fontWeight: '500' 
-                    }}>Example Conversations</p>
-                    
-                    {/* Q&A Input Section */}
-                    <div style={{ 
-                      backgroundColor: '#1a1a1a',
-                      borderRadius: '12px',
-                      padding: '16px',
-                      marginBottom: '16px'
-                    }}>
-                      <input
-                        value={currentQuestion}
-                        onChange={(e) => setCurrentQuestion(e.target.value)}
-                        placeholder="Enter a question..."
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          backgroundColor: '#2a2a2a',
-                          border: 'none',
-                          borderRadius: '8px',
-                          color: 'white',
-                          marginBottom: '8px',
-                          fontSize: '14px'
-                        }}
-                      />
-                      <textarea
-                        value={currentAnswer}
-                        onChange={(e) => setCurrentAnswer(e.target.value)}
-                        placeholder="Enter the answer..."
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          backgroundColor: '#2a2a2a',
-                          border: 'none',
-                          borderRadius: '8px',
-                          color: 'white',
-                          minHeight: '80px',
-                          fontSize: '14px',
-                          marginBottom: '8px',
-                          resize: 'vertical'
-                        }}
-                      />
-                      <button
-                        onClick={handleAddQA}
-                        disabled={!currentQuestion.trim() || !currentAnswer.trim()}
-                        style={{
-                          backgroundColor: currentQuestion.trim() && currentAnswer.trim() ? 'white' : '#666',
-                          color: currentQuestion.trim() && currentAnswer.trim() ? 'black' : '#999',
-                          padding: '8px 16px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          cursor: currentQuestion.trim() && currentAnswer.trim() ? 'pointer' : 'default',
-                          width: '100%'
-                        }}
-                      >
-                        Add Q&A
-                      </button>
-                    </div>
-
-                    {/* Q&A List */}
-                    {qaList.map((qa, index) => (
-                      <div key={index} style={{
-                        backgroundColor: '#2a2a2a',
-                        borderRadius: '8px',
-                        padding: '12px',
-                        marginBottom: '8px',
-                        position: 'relative'
-                      }}>
-                        <p style={{ margin: '0 0 8px 0', fontWeight: '500' }}>Q: {qa.question}</p>
-                        <p style={{ margin: '0', color: '#ccc' }}>A: {qa.answer}</p>
-                        <button
-                          onClick={() => handleRemoveQA(index)}
-                          style={{
-                            position: 'absolute',
-                            top: '8px',
-                            right: '8px',
-                            backgroundColor: 'transparent',
-                            border: 'none',
-                            color: '#666',
-                            cursor: 'pointer',
-                            padding: '4px',
-                            fontSize: '14px'
-                          }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Posts Section */}
-                  <div style={{ marginBottom: '24px' }}>
-                    <p style={{ 
-                      marginBottom: '12px',
-                      fontSize: '16px',
-                      fontWeight: '500'
-                    }}>Example Posts</p>
-
-                    {/* Post Input Section */}
-                    <div style={{ 
-                      backgroundColor: '#1a1a1a',
-                      borderRadius: '12px',
-                      padding: '16px',
-                      marginBottom: '16px'
-                    }}>
-                      <textarea
-                        value={currentPost}
-                        onChange={(e) => setCurrentPost(e.target.value)}
-                        placeholder="Enter an example post..."
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          backgroundColor: '#2a2a2a',
-                          border: 'none',
-                          borderRadius: '8px',
-                          color: 'white',
-                          minHeight: '100px',
-                          fontSize: '14px',
-                          marginBottom: '8px',
-                          resize: 'vertical'
-                        }}
-                      />
-                      <button
-                        onClick={handleAddPost}
-                        disabled={!currentPost.trim()}
-                        style={{
-                          backgroundColor: currentPost.trim() ? 'white' : '#666',
-                          color: currentPost.trim() ? 'black' : '#999',
-                          padding: '8px 16px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          cursor: currentPost.trim() ? 'pointer' : 'default',
-                          width: '100%'
-                        }}
-                      >
-                        Add Post
-                      </button>
-                    </div>
-
-                    {/* Posts List */}
-                    {postList.map((post, index) => (
-                      <div key={index} style={{
-                        backgroundColor: '#2a2a2a',
-                        borderRadius: '8px',
-                        padding: '12px',
-                        marginBottom: '8px',
-                        position: 'relative'
-                      }}>
-                        <p style={{ margin: '0' }}>{post}</p>
-                        <button
-                          onClick={() => handleRemovePost(index)}
-                          style={{
-                            position: 'absolute',
-                            top: '8px',
-                            right: '8px',
-                            backgroundColor: 'transparent',
-                            border: 'none',
-                            color: '#666',
-                            cursor: 'pointer',
-                            padding: '4px',
-                            fontSize: '14px'
-                          }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Tips Section */}
-                  <div style={{ 
-                    backgroundColor: '#1a1a1a',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    marginBottom: '24px'
-                  }}>
-                    <div style={{ 
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '8px'
-                    }}>
-                      <p style={{ 
-                        margin: 0,
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}>Tips for better results:</p>
-                    </div>
-                    <ul style={{ 
-                      margin: '0',
-                      paddingLeft: '24px',
-                      color: '#999',
-                      fontSize: '14px'
-                    }}>
-                      <li>Add diverse examples to show different interaction styles</li>
-                      <li>Include both technical and casual conversations</li>
-                      <li>Use emojis and formatting to make posts engaging</li>
-                      <li>Show how to handle different types of questions</li>
-                    </ul>
-                  </div>
-
-                </div>
-              ) : slides[currentStep].hasDataSources ? (
-                <div style={{ width: '90%' }}>
-                  <p>{slides[currentStep].content}</p>
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="What are you looking for?"
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      backgroundColor: '#1a1a1a',
-                      border: 'none',
-                      borderRadius: '10px',
-                      color: 'white',
-                      height: '40px',
-                      fontSize: '14px',
-                      marginBottom: '16px'
-                    }}
-                  />
-                  <div style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                    marginBottom: '20px'
-                  }}>
-                    {filteredSources.map((source, index) => (
-                      <span
-                        key={index}
-                        onClick={() => handleSourceClick(source)}
-                        style={{
-                          backgroundColor: '#1a1a1a',
-                          padding: '8px 16px',
-                          borderRadius: '20px',
-                          color: 'white',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          border: selectedSources.includes(source) ? '1px solid white' : '1px solid transparent'
-                        }}
-                      >
-                        {source}
-                      </span>
-                    ))}
-                  </div>
-                  
-                  <button 
-                    className="next-button"
-                    onClick={handleNext}
-                    style={{
-                      width: '100%',
-                      backgroundColor: 'white',
-                      color: 'black',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: '500',
-                      marginTop: '20px'
-                    }}
-                  >
-                    Continue
-                  </button>
-                </div>
-              ) : slides[currentStep].hasPostingConfig ? (
-                <div style={{ width: '90%' }}>
-                  <p style={{ marginBottom: '20px' }}>Choose the clients for posting:</p>
-                  <div style={{
-                    display: 'flex',
-                    gap: '10px',
-                    marginBottom: '20px'
-                  }}>
-                    <button
-                      onClick={() => setPostingClients(prev => 
-                        prev.includes('terminal') ? prev.filter(c => c !== 'terminal') : [...prev, 'terminal']
-                      )}
-                      style={{
-                        backgroundColor: postingClients.includes('terminal') ? '#fff' : '#1a1a1a',
-                        padding: '8px 16px',
-                        borderRadius: '20px',
-                        color: postingClients.includes('terminal') ? '#000' : '#fff',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                      }}
-                    >
-                      Xade Terminal
-                    </button>
-                    <button
-                      onClick={() => setPostingClients(prev => 
-                        prev.includes('x') ? prev.filter(c => c !== 'x') : [...prev, 'x']
-                      )}
-                      style={{
-                        backgroundColor: postingClients.includes('x') ? '#fff' : '#1a1a1a',
-                        padding: '8px 16px',
-                        borderRadius: '20px',
-                        color: postingClients.includes('x') ? '#000' : '#fff',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                      }}
-                    >
-                      X
-                    </button>
-                  </div>
-                  
-                  <p style={{ marginBottom: '10px' }}>Choose posting interval (minutes):</p>
-                  <input
-                    type="number"
-                    value={postingInterval}
-                    onChange={(e) => setPostingInterval(e.target.value)}
-                    min="2"
-                    placeholder="60"
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      backgroundColor: '#1a1a1a',
-                      border: 'none',
-                      borderRadius: '10px',
-                      color: 'white',
-                      height: '40px',
-                      fontSize: '14px',
-                      marginBottom: '20px'
-                    }}
-                  />
-                  
-                  <p style={{ marginBottom: '10px' }}>What should your agent post about?</p>
-                  <textarea
-                    value={postingTopics}
-                    onChange={(e) => setPostingTopics(e.target.value)}
-                    placeholder="Enter topics, themes, or specific content your agent should post about. Be as specific as possible."
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      backgroundColor: '#1a1a1a',
-                      border: 'none',
-                      borderRadius: '10px',
-                      color: 'white',
-                      minHeight: '100px',
-                      fontSize: '14px',
-                      marginBottom: '8px',
-                      resize: 'vertical'
-                    }}
-                  />
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '8px',
-                    marginBottom: '20px'
-                  }}>
-                    <button 
-                      onClick={async () => {
-                        if (!postingTopics.trim()) return;
-                        
-                        try {
-                          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                            method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${process.env.REACT_APP_GROQ_API_KEY}`,
-                              'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                              model: 'mixtral-8x7b-32768',
-                              messages: [
-                                {
-                                  role: 'system',
-                                  content: 'You are an expert at improving AI agent posting topics. Make the topics more specific, detailed, and effective while maintaining the original intent.'
-                                },
-                                {
-                                  role: 'user',
-                                  content: `Please improve these posting topics: ${postingTopics}`
-                                }
-                              ],
-                              temperature: 0.7,
-                              max_tokens: 1024
-                            })
-                          });
-
-                          if (!response.ok) {
-                            throw new Error('Failed to improve posting topics');
-                          }
-
-                          const data = await response.json();
-                          const improvedTopics = data.choices[0].message.content;
-                          setPostingTopics(improvedTopics);
-                        } catch (error) {
-                          console.error('Error improving posting topics:', error);
-                        }
-                      }}
-                      disabled={!postingTopics.trim()}
-                      style={{ 
-                        cursor: postingTopics.trim() ? 'pointer' : 'default',
-                        backgroundColor: postingTopics.trim() ? 'white' : '#1a1a1a',
-                        padding: '8px 16px',
-                        borderRadius: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        border: 'none',
-                        color: postingTopics.trim() ? '#000' : '#666',
-                        fontSize: '14px',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      Improve Topics
-                    </button>
-                  </div>
-                  
-                  <button 
-                    className="next-button"
-                    onClick={handleNext}
-                    style={{
-                      width: '100%',
-                      backgroundColor: 'white',
-                      color: 'black',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: '500',
-                      marginTop: '20px'
-                    }}
-                  >
-                    Continue
-                  </button>
-                </div>
-              ) : slides[currentStep].hasChatConfig ? (
-                <div style={{ width: '90%' }}>
-                  <p style={{ marginBottom: '20px' }}>Choose the clients for interaction:</p>
-                  <div style={{
-                    display: 'flex',
-                    gap: '10px',
-                    marginBottom: '20px'
-                  }}>
-                    <button
-                      onClick={() => setChatClients(prev => 
-                        prev.includes('terminal') ? prev.filter(c => c !== 'terminal') : [...prev, 'terminal']
-                      )}
-                      style={{
-                        backgroundColor: chatClients.includes('terminal') ? '#fff' : '#1a1a1a',
-                        padding: '8px 16px',
-                        borderRadius: '20px',
-                        color: chatClients.includes('terminal') ? '#000' : '#fff',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                      }}
-                    >
-                      Xade Terminal
-                    </button>
-                    <button
-                      onClick={() => setChatClients(prev => 
-                        prev.includes('x') ? prev.filter(c => c !== 'x') : [...prev, 'x']
-                      )}
-                      style={{
-                        backgroundColor: chatClients.includes('x') ? '#fff' : '#1a1a1a',
-                        padding: '8px 16px',
-                        borderRadius: '20px',
-                        color: chatClients.includes('x') ? '#000' : '#fff',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                      }}
-                    >
-                      X
-                    </button>
-                  </div>
-                  
-                  <div style={{ marginBottom: '20px' }}>
-                    <p style={{ marginBottom: '10px' }}>Enter usernames to reply to and join their spaces:</p>
-                    <div style={{ 
-                      display: 'flex',
-                      gap: '8px',
-                      marginBottom: '12px'
-                    }}>
-                      <input
-                        type="text"
-                        value={currentUsername}
-                        onChange={(e) => setCurrentUsername(e.target.value)}
-                        placeholder="Enter username without @"
-                        style={{
-                          flex: 1,
-                          padding: '12px',
-                          backgroundColor: '#1a1a1a',
-                          border: 'none',
-                          borderRadius: '10px',
-                          color: 'white',
-                          height: '40px',
-                          fontSize: '14px'
-                        }}
-                      />
-                      <button
-                        onClick={handleAddUsername}
-                        disabled={!currentUsername.trim()}
-                        style={{
-                          padding: '0 20px',
-                          backgroundColor: currentUsername.trim() ? 'white' : '#666',
-                          color: currentUsername.trim() ? 'black' : '#999',
-                          border: 'none',
-                          borderRadius: '10px',
-                          cursor: currentUsername.trim() ? 'pointer' : 'default'
-                        }}
-                      >
-                        Add
-                      </button>
-                    </div>
                     <div style={{
                       display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '8px'
+                      alignItems: 'center',
+                      gap: '10px',
+                      marginBottom: '20px'
                     }}>
-                      {replyToUsernames.map((username, index) => (
-                        <div
-                          key={index}
-                          style={{
-                            backgroundColor: '#1a1a1a',
-                            padding: '6px 12px',
-                            borderRadius: '20px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                          }}
-                        >
-                          <span>@{username}</span>
-                          <button
-                            onClick={() => handleRemoveUsername(username)}
-                            style={{
-                              backgroundColor: 'transparent',
-                              border: 'none',
-                              color: '#666',
-                              cursor: 'pointer',
-                              padding: '0',
-                              fontSize: '16px'
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+                      <div
+                        onClick={() => setReplyToReplies(!replyToReplies)}
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '4px',
+                          border: '2px solid white',
+                          backgroundColor: replyToReplies ? 'white' : 'transparent',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <span>Reply to post replies and quote tweets</span>
                     </div>
-                  </div>
-                  
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    marginBottom: '20px'
-                  }}>
-                    <div
-                      onClick={() => setReplyToReplies(!replyToReplies)}
-                      style={{
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '4px',
-                        border: '2px solid white',
-                        backgroundColor: replyToReplies ? 'white' : 'transparent',
-                        cursor: 'pointer'
-                      }}
-                    />
-                    <span>Reply to post replies and quote tweets</span>
-                  </div>
-                  
-                  <button 
-                    className="next-button"
-                    onClick={handleNext}
-                    style={{
-                      width: '100%',
-                      backgroundColor: 'white',
-                      color: 'black',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: '500',
-                      marginTop: '20px'
-                    }}
-                  >
-                    Continue
-                  </button>
-                </div>
-              ) : slides[currentStep].hasXConfig ? (
-                <>
-                  {/* Subhead for automated account labeling - move above the form, styled in grey */}
-                  <div style={{ marginBottom: '18px', color: '#aaa', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>Make sure to set your account as automated on X</span>
-                    <a 
-                      href="https://devcommunity.x.com/t/introducing-automated-account-labeling/166830" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      style={{ color: '#1da1f2', textDecoration: 'underline', fontSize: '13px', marginLeft: '8px' }}
-                    >
-                      Read Guide
-                    </a>
-                  </div>
-                  <div style={{ width: '90%' }}>
-                    <div style={{ marginBottom: '20px' }}>
-                      <p style={{ color: '#666', marginBottom: '8px' }}>Twitter Username</p>
-                      <input
-                        type="text"
-                        value={twitterUsername}
-                        onChange={(e) => setTwitterUsername(e.target.value)}
-                        placeholder="username without @"
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          backgroundColor: '#1a1a1a',
-                          border: 'none',
-                          borderRadius: '10px',
-                          color: 'white',
-                          height: '40px',
-                          fontSize: '14px',
-                          marginBottom: '16px'
-                        }}
-                      />
-                      <p style={{ color: '#666', marginBottom: '8px' }}>Twitter Email</p>
-                      <input
-                        type="email"
-                        value={twitterEmail}
-                        onChange={(e) => setTwitterEmail(e.target.value)}
-                        placeholder="email@example.com"
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          backgroundColor: '#1a1a1a',
-                          border: 'none',
-                          borderRadius: '10px',
-                          color: 'white',
-                          height: '40px',
-                          fontSize: '14px',
-                          marginBottom: '16px'
-                        }}
-                      />
-                      <p style={{ color: '#666', marginBottom: '8px' }}>Twitter Password</p>
-                      <input
-                        type="password"
-                        value={twitterPassword}
-                        onChange={(e) => setTwitterPassword(e.target.value)}
-                        placeholder="Enter your password"
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          backgroundColor: '#1a1a1a',
-                          border: 'none',
-                          borderRadius: '10px',
-                          color: 'white',
-                          height: '40px',
-                          fontSize: '14px',
-                          marginBottom: '16px'
-                        }}
-                      />
-                      <p style={{ color: '#666', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        Twitter 2FA Secret (required)
-                        <a 
-                          href="https://devcommunity.x.com/t/introducing-automated-account-labeling/166830" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          style={{ color: '#1da1f2', textDecoration: 'underline', fontSize: '13px', marginLeft: '8px' }}
-                        >
-                          Read Guide
-                        </a>
-                      </p>
-                      <input
-                        type="text"
-                        value={twitter2FASecret}
-                        onChange={(e) => setTwitter2FASecret(e.target.value)}
-                        placeholder="Enter your 2FA secret"
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          backgroundColor: '#1a1a1a',
-                          border: 'none',
-                          borderRadius: '10px',
-                          color: 'white',
-                          height: '40px',
-                          fontSize: '14px',
-                          marginBottom: '16px'
-                        }}
-                      />
-                    </div>
-                    {/* X Config Continue Button with validation */}
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                      <button
-                        className="next-button"
-                        onClick={() => {
-                          if (!isXConfigValid) {
-                            setShowXConfigError(true);
-                          } else {
-                            setShowXConfigError(false);
-                            handleNext();
-                          }
-                        }}
-                        disabled={!isXConfigValid}
-                        style={{
-                          width: '100%',
-                          backgroundColor: isXConfigValid ? 'white' : '#666',
-                          color: isXConfigValid ? 'black' : '#999',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          cursor: isXConfigValid ? 'pointer' : 'not-allowed',
-                          fontWeight: '500',
-                        }}
-                        title={!isXConfigValid ? 'Fill all 4 fields or leave all empty' : ''}
-                      >
-                        Continue
-                      </button>
-                    </div>
-                    {showXConfigError && (
-                      <div style={{ color: 'red', marginTop: '10px' }}>
-                        Please fill all 4 fields or leave all empty to continue.
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : slides[currentStep].hasXLabel ? (
-                <div style={{ width: '90%', textAlign: 'center' }}>
-                  <img 
-                    src={slides[currentStep].previewImage}
-                    alt="X Account Preview"
-                    style={{
-                      width: '100%',
-                      marginBottom: '20px',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <a 
-                    href="https://devcommunity.x.com/t/introducing-automated-account-labeling/166830"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ textDecoration: 'none' }}
-                  >
+                    
                     <button 
                       className="next-button"
+                      onClick={handleNext}
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'white',
+                        color: 'black',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        marginTop: '20px'
+                      }}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                ) : slides[currentStep].hasXConfig ? (
+                  <>
+                    {/* Subhead for automated account labeling - move above the form, styled in grey */}
+                    <div style={{ marginBottom: '18px', color: '#aaa', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>Make sure to set your account as automated on X</span>
+                      <a 
+                        href="https://devcommunity.x.com/t/introducing-automated-account-labeling/166830" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{ color: '#1da1f2', textDecoration: 'underline', fontSize: '13px', marginLeft: '8px' }}
+                      >
+                        Read Guide
+                      </a>
+                    </div>
+                    <div style={{ width: '90%' }}>
+                      <div style={{ marginBottom: '20px' }}>
+                        <p style={{ color: '#666', marginBottom: '8px' }}>Twitter Username</p>
+                        <input
+                          type="text"
+                          value={twitterUsername}
+                          onChange={(e) => setTwitterUsername(e.target.value)}
+                          placeholder="username without @"
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            backgroundColor: '#1a1a1a',
+                            border: 'none',
+                            borderRadius: '10px',
+                            color: 'white',
+                            height: '40px',
+                            fontSize: '14px',
+                            marginBottom: '16px'
+                          }}
+                        />
+                        <p style={{ color: '#666', marginBottom: '8px' }}>Twitter Email</p>
+                        <input
+                          type="email"
+                          value={twitterEmail}
+                          onChange={(e) => setTwitterEmail(e.target.value)}
+                          placeholder="email@example.com"
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            backgroundColor: '#1a1a1a',
+                            border: 'none',
+                            borderRadius: '10px',
+                            color: 'white',
+                            height: '40px',
+                            fontSize: '14px',
+                            marginBottom: '16px'
+                          }}
+                        />
+                        <p style={{ color: '#666', marginBottom: '8px' }}>Twitter Password</p>
+                        <input
+                          type="password"
+                          value={twitterPassword}
+                          onChange={(e) => setTwitterPassword(e.target.value)}
+                          placeholder="Enter your password"
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            backgroundColor: '#1a1a1a',
+                            border: 'none',
+                            borderRadius: '10px',
+                            color: 'white',
+                            height: '40px',
+                            fontSize: '14px',
+                            marginBottom: '16px'
+                          }}
+                        />
+                        <p style={{ color: '#666', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          Twitter 2FA Secret (required)
+                          <a 
+                            href="https://devcommunity.x.com/t/introducing-automated-account-labeling/166830" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            style={{ color: '#1da1f2', textDecoration: 'underline', fontSize: '13px', marginLeft: '8px' }}
+                          >
+                            Read Guide
+                          </a>
+                        </p>
+                        <input
+                          type="text"
+                          value={twitter2FASecret}
+                          onChange={(e) => setTwitter2FASecret(e.target.value)}
+                          placeholder="Enter your 2FA secret"
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            backgroundColor: '#1a1a1a',
+                            border: 'none',
+                            borderRadius: '10px',
+                            color: 'white',
+                            height: '40px',
+                            fontSize: '14px',
+                            marginBottom: '16px'
+                          }}
+                        />
+                      </div>
+                      {/* X Config Continue Button with validation */}
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                        <button
+                          className="next-button"
+                          onClick={() => {
+                            if (!isXConfigValid) {
+                              setShowXConfigError(true);
+                            } else {
+                              setShowXConfigError(false);
+                              handleNext();
+                            }
+                          }}
+                          disabled={!isXConfigValid}
+                          style={{
+                            width: '100%',
+                            backgroundColor: isXConfigValid ? 'white' : '#666',
+                            color: isXConfigValid ? 'black' : '#999',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            cursor: isXConfigValid ? 'pointer' : 'not-allowed',
+                            fontWeight: '500',
+                          }}
+                          title={!isXConfigValid ? 'Fill all 4 fields or leave all empty' : ''}
+                        >
+                          Continue
+                        </button>
+                      </div>
+                      {showXConfigError && (
+                        <div style={{ color: 'red', marginTop: '10px' }}>
+                          Please fill all 4 fields or leave all empty to continue.
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : slides[currentStep].hasXLabel ? (
+                  <div style={{ width: '90%', textAlign: 'center' }}>
+                    <img 
+                      src={slides[currentStep].previewImage}
+                      alt="X Account Preview"
+                      style={{
+                        width: '100%',
+                        marginBottom: '20px',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <a 
+                      href="https://devcommunity.x.com/t/introducing-automated-account-labeling/166830"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <button 
+                        className="next-button"
+                        style={{
+                          width: '110%',
+                          backgroundColor: 'transparent',
+                          color: 'white',
+                          marginTop: '20px',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          border: '1px solid white',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        Read guide
+                       
+                      </button>
+                    </a>
+                  </div>
+                ) : slides[currentStep].hasXExtension ? (
+                  <div style={{ width: '90%', textAlign: 'center' }}>
+                    <button 
+                      className="next-button"
+                      onClick={handleNext}
                       style={{
                         width: '110%',
                         backgroundColor: 'transparent',
@@ -1809,269 +1838,84 @@ const SocialAgentLauncher = () => {
                         gap: '8px'
                       }}
                     >
-                      Read guide
-                     
+                      Download now
                     </button>
-                  </a>
-                </div>
-              ) : slides[currentStep].hasXExtension ? (
-                <div style={{ width: '90%', textAlign: 'center' }}>
-                  <button 
-                    className="next-button"
-                    onClick={handleNext}
-                    style={{
-                      width: '110%',
-                      backgroundColor: 'transparent',
-                      color: 'white',
-                      marginTop: '20px',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid white',
-                      cursor: 'pointer',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    Download now
-                  </button>
-                </div>
-              ) : slides[currentStep].hasXDetails ? (
-                <div style={{ width: '90%' }}>
-                  <div style={{ marginBottom: '20px' }}>
-                    <p style={{ color: '#666', marginBottom: '8px' }}>Email address</p>
-                    <input
-                      type="email"
-                      placeholder="satoshi@xade.xyz"
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        backgroundColor: '#1a1a1a',
-                        border: 'none',
-                        borderRadius: '10px',
-                        color: 'white',
-                        height: '40px',
-                        fontSize: '14px',
-                        marginBottom: '16px'
-                      }}
-                    />
-                    <p style={{ color: '#666', marginBottom: '8px' }}>Username</p>
-                    <input
-                      type="text"
-                      placeholder="Satoshi"
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        backgroundColor: '#1a1a1a',
-                        border: 'none',
-                        borderRadius: '10px',
-                        color: 'white',
-                        height: '40px',
-                        fontSize: '14px',
-                        marginBottom: '16px'
-                      }}
-                    />
-                    <p style={{ color: '#666', marginBottom: '8px' }}>Password</p>
-                    <input
-                      type="password"
-                      placeholder="Satoshi"
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        backgroundColor: '#1a1a1a',
-                        border: 'none',
-                        borderRadius: '10px',
-                        color: 'white',
-                        height: '40px',
-                        fontSize: '14px',
-                        marginBottom: '16px'
-                      }}
-                    />
-                    <p style={{ color: '#666', marginBottom: '8px' }}>Auth Code from browser extension</p>
-                    <input
-                      type="text"
-                      placeholder="Satoshi"
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        backgroundColor: '#1a1a1a',
-                        border: 'none',
-                        borderRadius: '10px',
-                        color: 'white',
-                        height: '40px',
-                        fontSize: '14px',
-                        marginBottom: '16px'
-                      }}
-                    />
                   </div>
-                  <button 
-                    className="next-button"
-                    onClick={handleNext}
-                    style={{
-                      width: '100%',
-                      backgroundColor: 'white',
-                      color: 'black',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: '500'
-                    }}
-                  >
-                    Continue
-                  </button>
-                </div>
-              ) : slides[currentStep].hasReview ? (
-                <>
+                ) : slides[currentStep].hasXDetails ? (
                   <div style={{ width: '90%' }}>
-                    <div style={{ 
-                      backgroundColor: '#111',
-                      borderRadius: '16px',
-                      padding: '24px',
-                      marginBottom: '24px'
-                    }}>
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '12px',
-                        marginBottom: '24px' 
-                      }}>
-                        {agentImage ? (
-                          <img 
-                            src={URL.createObjectURL(agentImage)} 
-                            alt="Agent profile" 
-                            style={{
-                              width: '40px',
-                              height: '40px',
-                              borderRadius: '50%',
-                              objectFit: 'cover'
-                            }}
-                          />
-                        ) : (
-                          <div style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            backgroundColor: '#1a1a1a'
-                          }} />
-                        )}
-                        <h3 style={{ margin: 0 }}>{agentName}</h3>
-                      </div>
-
-                      <div style={{ marginBottom: '20px' }}>
-                        <p style={{ color: '#666', marginBottom: '8px' }}>Description:</p>
-                        <p style={{ margin: 0 }}>{agentDescription}</p>
-                      </div>
-
-                      <div style={{ marginBottom: '20px' }}>
-                        <p style={{ color: '#666', marginBottom: '8px' }}>Prompt:</p>
-                        <p style={{ margin: 0 }}>{prompt}</p>
-                      </div>
-
-                      <div style={{ marginBottom: '20px' }}>
-                        <p style={{ color: '#666', marginBottom: '8px' }}>Sources:</p>
-                        <p style={{ margin: 0 }}>{selectedSources.join(', ')}</p>
-                      </div>
-
-                      <div style={{ marginBottom: '20px' }}>
-                        <p style={{ color: '#666', marginBottom: '8px' }}>Training Materials:</p>
-                        <p style={{ margin: 0 }}>
-                          {trainingFiles.length > 0 ? (
-                            <>Files: {trainingFiles.map(file => file.name).join(', ')}</>
-                          ) : (
-                            'No files uploaded'
-                          )}
-                          {customContext ? (
-                            <><br />Custom context provided</>
-                          ) : null}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p style={{ color: '#666', marginBottom: '8px' }}>Activity:</p>
-                        <p style={{ margin: 0 }}>{selectedActivities.map(activity => 
-                          activity === 'trade' ? 'Making trades' : 'Posting on X'
-                        ).join(', ')}</p>
-                      </div>
-
-                      <div style={{ marginBottom: '20px' }}>
-                        <p style={{ color: '#666', marginBottom: '8px' }}>Posting Configuration:</p>
-                        <p style={{ margin: 0 }}>
-                          Clients: {postingClients.length > 0 ? postingClients.map(c => c === 'terminal' ? 'Xade Terminal' : 'X').join(', ') : 'None'}<br/>
-                          Interval: {postingInterval} minutes<br/>
-                          Topics: {postingTopics || 'Not specified'}
-                        </p>
-                      </div>
-
-                      <div style={{ marginBottom: '20px' }}>
-                        <p style={{ color: '#666', marginBottom: '8px' }}>Chat Configuration:</p>
-                        <p style={{ margin: 0 }}>
-                          Clients: {chatClients.length > 0 ? chatClients.map(c => c === 'terminal' ? 'Xade Terminal' : 'X').join(', ') : 'None'}<br/>
-                          Reply to: {replyToUsernames.map(username => `@${username}`).join(', ')}<br/>
-                          Reply to replies and quotes: {replyToReplies ? 'Yes' : 'No'}
-                        </p>
-                      </div>
+                    <div style={{ marginBottom: '20px' }}>
+                      <p style={{ color: '#666', marginBottom: '8px' }}>Email address</p>
+                      <input
+                        type="email"
+                        placeholder="satoshi@xade.xyz"
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          backgroundColor: '#1a1a1a',
+                          border: 'none',
+                          borderRadius: '10px',
+                          color: 'white',
+                          height: '40px',
+                          fontSize: '14px',
+                          marginBottom: '16px'
+                        }}
+                      />
+                      <p style={{ color: '#666', marginBottom: '8px' }}>Username</p>
+                      <input
+                        type="text"
+                        placeholder="Satoshi"
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          backgroundColor: '#1a1a1a',
+                          border: 'none',
+                          borderRadius: '10px',
+                          color: 'white',
+                          height: '40px',
+                          fontSize: '14px',
+                          marginBottom: '16px'
+                        }}
+                      />
+                      <p style={{ color: '#666', marginBottom: '8px' }}>Password</p>
+                      <input
+                        type="password"
+                        placeholder="Satoshi"
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          backgroundColor: '#1a1a1a',
+                          border: 'none',
+                          borderRadius: '10px',
+                          color: 'white',
+                          height: '40px',
+                          fontSize: '14px',
+                          marginBottom: '16px'
+                        }}
+                      />
+                      <p style={{ color: '#666', marginBottom: '8px' }}>Auth Code from browser extension</p>
+                      <input
+                        type="text"
+                        placeholder="Satoshi"
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          backgroundColor: '#1a1a1a',
+                          border: 'none',
+                          borderRadius: '10px',
+                          color: 'white',
+                          height: '40px',
+                          fontSize: '14px',
+                          marginBottom: '16px'
+                        }}
+                      />
                     </div>
-
                     <button 
                       className="next-button"
-                      onClick={handleCreateAgent}
-                      disabled={isCreating}
-                      style={{
-                        width: '100%',
-                        backgroundColor: isCreating ? '#666' : 'white',
-                        color: 'black',
-                        marginBottom: '12px',
-                        padding: '12px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        cursor: isCreating ? 'default' : 'pointer',
-                        fontWeight: '500',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '10px'
-                      }}
-                    >
-                      {isCreating ? (
-                        <>
-                          Creating your agent
-                          <div style={loadingAnimation} />
-                        </>
-                      ) : (
-                        `Start your 7 day free trial`
-                      )}
-                    </button>
-
-                    <button 
-                      onClick={handleBack}
-                      style={{
-                        width: '100%',
-                        backgroundColor: '#1a1a1a',
-                        border: 'none',
-                        color: 'white',
-                        cursor: 'pointer',
-                        padding: '12px',
-                        borderRadius: '8px'
-                      }}
-                    >
-                      Change Info
-                    </button>
-                  </div>
-                </>
-              ) : slides[currentStep].hasSuccess ? (
-                <>
-                  <div style={{ width: '90%', textAlign: 'center' }}>
-                    <button 
-                      className="next-button"
-                      onClick={() => navigate(`/chat/${agentName}`)}
+                      onClick={handleNext}
                       style={{
                         width: '100%',
                         backgroundColor: 'white',
                         color: 'black',
-                        marginTop: '20px',
                         padding: '12px',
                         borderRadius: '8px',
                         border: 'none',
@@ -2079,146 +1923,306 @@ const SocialAgentLauncher = () => {
                         fontWeight: '500'
                       }}
                     >
-                     Talk to {agentName || 'your agent'}
+                      Continue
                     </button>
                   </div>
-                </>
-              ) : slides[currentStep].hasActivities ? (
-                <div style={{ width: '90%' }}>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: '16px',
-                    marginBottom: '20px'
-                  }}>
-                    <div
-                      onClick={() => handleActivitySelect('post')}
-                      style={{
-                        backgroundColor: '#1a1a1a',
-                        borderRadius: '12px',
-                        padding: '16px',
-                        cursor: 'pointer',
-                        border: selectedActivities.includes('post') ? '1px solid white' : '1px solid transparent'
-                      }}
-                    >
-                      <img 
-                        src="https://wbsnlpviggcnwqfyfobh.supabase.co/storage/v1/object/public/app//picture8.png" 
-                        alt="Post sentiently"
+                ) : slides[currentStep].hasReview ? (
+                  <>
+                    <div style={{ width: '90%' }}>
+                      <div style={{ 
+                        backgroundColor: '#111',
+                        borderRadius: '16px',
+                        padding: '24px',
+                        marginBottom: '24px'
+                      }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '12px',
+                          marginBottom: '24px' 
+                        }}>
+                          {agentImage ? (
+                            <img 
+                              src={URL.createObjectURL(agentImage)} 
+                              alt="Agent profile" 
+                              style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                objectFit: 'cover'
+                              }}
+                            />
+                          ) : (
+                            <div style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '50%',
+                              backgroundColor: '#1a1a1a'
+                            }} />
+                          )}
+                          <h3 style={{ margin: 0 }}>{agentName}</h3>
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                          <p style={{ color: '#666', marginBottom: '8px' }}>Description:</p>
+                          <p style={{ margin: 0 }}>{agentDescription}</p>
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                          <p style={{ color: '#666', marginBottom: '8px' }}>Prompt:</p>
+                          <p style={{ margin: 0 }}>{prompt}</p>
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                          <p style={{ color: '#666', marginBottom: '8px' }}>Sources:</p>
+                          <p style={{ margin: 0 }}>{selectedSources.join(', ')}</p>
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                          <p style={{ color: '#666', marginBottom: '8px' }}>Training Materials:</p>
+                          <p style={{ margin: 0 }}>
+                            {trainingFiles.length > 0 ? (
+                              <>Files: {trainingFiles.map(file => file.name).join(', ')}</>
+                            ) : (
+                              'No files uploaded'
+                            )}
+                            {customContext ? (
+                              <><br />Custom context provided</>
+                            ) : null}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p style={{ color: '#666', marginBottom: '8px' }}>Activity:</p>
+                          <p style={{ margin: 0 }}>{selectedActivities.map(activity => 
+                            activity === 'trade' ? 'Making trades' : 'Posting on X'
+                          ).join(', ')}</p>
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                          <p style={{ color: '#666', marginBottom: '8px' }}>Posting Configuration:</p>
+                          <p style={{ margin: 0 }}>
+                            Clients: {postingClients.length > 0 ? postingClients.map(c => c === 'terminal' ? 'Xade Terminal' : 'X').join(', ') : 'None'}<br/>
+                            Interval: {postingInterval} minutes<br/>
+                            Topics: {postingTopics || 'Not specified'}
+                          </p>
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                          <p style={{ color: '#666', marginBottom: '8px' }}>Chat Configuration:</p>
+                          <p style={{ margin: 0 }}>
+                            Clients: {chatClients.length > 0 ? chatClients.map(c => c === 'terminal' ? 'Xade Terminal' : 'X').join(', ') : 'None'}<br/>
+                            Reply to: {replyToUsernames.map(username => `@${username}`).join(', ')}<br/>
+                            Reply to replies and quotes: {replyToReplies ? 'Yes' : 'No'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button 
+                        className="next-button"
+                        onClick={handleCreateAgent}
+                        disabled={isCreating}
                         style={{
                           width: '100%',
-                          height: 'auto',
-                          marginBottom: '8px',
+                          backgroundColor: isCreating ? '#666' : 'white',
+                          color: 'black',
+                          marginBottom: '12px',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          cursor: isCreating ? 'default' : 'pointer',
+                          fontWeight: '500',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '10px'
+                        }}
+                      >
+                        {isCreating ? (
+                          <>
+                            Creating your agent
+                            <div style={loadingAnimation} />
+                          </>
+                        ) : (
+                          `Start your 7 day free trial`
+                        )}
+                      </button>
+
+                      <button 
+                        onClick={handleBack}
+                        style={{
+                          width: '100%',
+                          backgroundColor: '#1a1a1a',
+                          border: 'none',
+                          color: 'white',
+                          cursor: 'pointer',
+                          padding: '12px',
                           borderRadius: '8px'
                         }}
-                      />
-                      <p style={{ margin: 0, textAlign: 'center' }}>Post sentiently</p>
+                      >
+                        Change Info
+                      </button>
                     </div>
-                    
-                    <div
-                      onClick={() => handleActivitySelect('chat')}
-                      style={{
-                        backgroundColor: '#1a1a1a',
-                        borderRadius: '12px',
-                        padding: '16px',
-                        cursor: 'pointer',
-                        border: selectedActivities.includes('chat') ? '1px solid white' : '1px solid transparent'
-                      }}
-                    >
-                      <img 
-                        src="https://wbsnlpviggcnwqfyfobh.supabase.co/storage/v1/object/public/app//picture9.png" 
-                        alt="Chat and Interact"
+                  </>
+                ) : slides[currentStep].hasSuccess ? (
+                  <>
+                    <div style={{ width: '90%', textAlign: 'center' }}>
+                      <button 
+                        className="next-button"
+                        onClick={() => navigate(`/chat/${agentName}`)}
                         style={{
                           width: '100%',
-                          height: 'auto',
-                          marginBottom: '8px',
-                          borderRadius: '8px'
+                          backgroundColor: 'white',
+                          color: 'black',
+                          marginTop: '20px',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontWeight: '500'
                         }}
-                      />
-                      <p style={{ margin: 0, textAlign: 'center' }}>Chat and Interact</p>
+                      >
+                       Talk to {agentName || 'your agent'}
+                      </button>
+                    </div>
+                  </>
+                ) : slides[currentStep].hasActivities ? (
+                  <div style={{ width: '90%' }}>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '16px',
+                      marginBottom: '20px'
+                    }}>
+                      <div
+                        onClick={() => handleActivitySelect('post')}
+                        style={{
+                          backgroundColor: '#1a1a1a',
+                          borderRadius: '12px',
+                          padding: '16px',
+                          cursor: 'pointer',
+                          border: selectedActivities.includes('post') ? '1px solid white' : '1px solid transparent'
+                        }}
+                      >
+                        <img 
+                          src="https://wbsnlpviggcnwqfyfobh.supabase.co/storage/v1/object/public/app//picture8.png" 
+                          alt="Post sentiently"
+                          style={{
+                            width: '100%',
+                            height: 'auto',
+                            marginBottom: '8px',
+                            borderRadius: '8px'
+                          }}
+                        />
+                        <p style={{ margin: 0, textAlign: 'center' }}>Post sentiently</p>
+                      </div>
+                      
+                      <div
+                        onClick={() => handleActivitySelect('chat')}
+                        style={{
+                          backgroundColor: '#1a1a1a',
+                          borderRadius: '12px',
+                          padding: '16px',
+                          cursor: 'pointer',
+                          border: selectedActivities.includes('chat') ? '1px solid white' : '1px solid transparent'
+                        }}
+                      >
+                        <img 
+                          src="https://wbsnlpviggcnwqfyfobh.supabase.co/storage/v1/object/public/app//picture9.png" 
+                          alt="Chat and Interact"
+                          style={{
+                            width: '100%',
+                            height: 'auto',
+                            marginBottom: '8px',
+                            borderRadius: '8px'
+                          }}
+                        />
+                        <p style={{ margin: 0, textAlign: 'center' }}>Chat and Interact</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : slides[currentStep].hasModelSelection ? (
-                <div style={{ width: '90%' }}>
-                  <p>{slides[currentStep].content}</p>
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      backgroundColor: '#1a1a1a',
-                      border: 'none',
-                      borderRadius: '10px',
-                      color: 'white',
-                      height: '48px',
-                      fontSize: '14px',
-                      marginBottom: '20px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="gpt-4o">GPT-o3-mini</option>
-                    <option value="io-net">DeepSeek-R1</option>
-                  </select>
-                  
+                ) : slides[currentStep].hasModelSelection ? (
+                  <div style={{ width: '90%' }}>
+                    <p>{slides[currentStep].content}</p>
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        backgroundColor: '#1a1a1a',
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: 'white',
+                        height: '48px',
+                        fontSize: '14px',
+                        marginBottom: '20px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="gpt-4o">GPT-o3-mini</option>
+                      <option value="io-net">DeepSeek-R1</option>
+                    </select>
+                    
+                    <button 
+                      className="next-button"
+                      onClick={handleNext}
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'white',
+                        color: 'black',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        marginTop: '20px'
+                      }}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                ) : (
+                  <p style={{ marginBottom: '1.5rem' }}>{slides[currentStep].content}</p>
+                )}
+                {currentStep === 0 ? (
                   <button 
                     className="next-button"
                     onClick={handleNext}
-                    style={{
-                      width: '100%',
-                      backgroundColor: 'white',
-                      color: 'black',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: '500',
-                      marginTop: '20px'
+                    style={{ marginTop: '1rem' }}
+                  >
+                    Continue
+                  </button>
+                ) : (
+                  <button 
+                    className="next-button"
+                    onClick={handleNext}
+                    disabled={currentStep === slides.length - 1}
+                    style={{ 
+                      marginTop: '1rem',
+                      display: (currentStep === slides.length - 1 || 
+                              currentStep === 4 || 
+                              currentStep === 1 ||
+                              currentStep === 5 ||
+                              currentStep === 6 ||
+                              currentStep === 7 ||
+                              currentStep === 8 ||
+                              currentStep === 3 ||
+                              slides[currentStep].hasReview ||
+                              slides[currentStep].hasXDetails ||
+                              slides[currentStep].hasXConfig // Hide default Continue button for X config step
+                      ) ? 'none' : 'block'
                     }}
                   >
                     Continue
                   </button>
-                </div>
-              ) : (
-                <p style={{ marginBottom: '1.5rem' }}>{slides[currentStep].content}</p>
-              )}
-              {currentStep === 0 ? (
-                <button 
-                  className="next-button"
-                  onClick={handleNext}
-                  style={{ marginTop: '1rem' }}
-                >
-                  Continue
-                </button>
-              ) : (
-                <button 
-                  className="next-button"
-                  onClick={handleNext}
-                  disabled={currentStep === slides.length - 1}
-                  style={{ 
-                    marginTop: '1rem',
-                    display: (currentStep === slides.length - 1 || 
-                            currentStep === 4 || 
-                            currentStep === 1 ||
-                            currentStep === 5 ||
-                            currentStep === 6 ||
-                            currentStep === 7 ||
-                            currentStep === 8 ||
-                            currentStep === 3 ||
-                            slides[currentStep].hasReview ||
-                            slides[currentStep].hasXDetails ||
-                            slides[currentStep].hasXConfig // Hide default Continue button for X config step
-                    ) ? 'none' : 'block'
-                  }}
-                >
-                  Continue
-                </button>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-    </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </>
   );
 };
 
