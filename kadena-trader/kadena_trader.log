@@ -10,3 +10,31 @@
 2025-05-14 23:18:22,504 - __main__ - INFO - Processing prompt request: A DCA trading agent that buys 1 USD using KDA every 30 minutes at market price if the value of 1KDA ...
 2025-05-14 23:18:32,436 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 2025-05-14 23:18:32,464 - __main__ - INFO - Prompt processing completed successfully
+2025-05-15 13:05:57,647 - api - INFO - Processing prompt request: buy BRO using KDA every 5 mins...
+2025-05-15 13:06:02,061 - api - ERROR - Error processing prompt: 1 validation error for ChatOpenAI
+__root__
+  Client.__init__() got an unexpected keyword argument 'proxies' (type=type_error)
+Traceback (most recent call last):
+  File "/Users/harshalmadnani/Documents/GitHub/kadena-agents/kadena-trader/api.py", line 68, in process_prompt
+    result = improve_prompt(prompt=request.prompt, history=request.history)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/harshalmadnani/Documents/GitHub/kadena-agents/kadena-trader/prompt.py", line 497, in improve_prompt
+    model = ChatOpenAI(model="o4-mini")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/harshalmadnani/Documents/GitHub/kadena-agents/kadena-trader/venv/lib/python3.11/site-packages/pydantic/v1/main.py", line 341, in __init__
+    raise validation_error
+pydantic.v1.error_wrappers.ValidationError: 1 validation error for ChatOpenAI
+__root__
+  Client.__init__() got an unexpected keyword argument 'proxies' (type=type_error)
+2025-05-15 13:09:54,523 - api - INFO - Processing prompt request: buy BRO using KDA every 5 mins...
+2025-05-15 13:10:03,784 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-15 13:10:03,787 - api - INFO - Prompt processing completed successfully
+2025-05-15 13:10:36,820 - api - INFO - Processing prompt request: buy BRO using 1 KDA every 5 mins...
+2025-05-15 13:10:42,393 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-15 13:10:42,394 - api - INFO - Prompt processing completed successfully
+2025-05-15 13:11:44,656 - api - INFO - Processing prompt request: buy BRO using 1 KDA every 5 mins until the wallet runs out of balance...
+2025-05-15 13:11:50,975 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-15 13:11:50,975 - api - INFO - Prompt processing completed successfully
+2025-05-15 13:13:09,642 - api - INFO - Generating code for prompt: buy BRO using 1 KDA every 5 mins...
+2025-05-15 13:13:22,082 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-15 13:13:22,084 - api - INFO - Code generation completed successfully
