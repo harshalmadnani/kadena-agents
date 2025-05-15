@@ -208,7 +208,7 @@ const Chat: React.FC = () => {
 
   // Function to render message content based on type
   const renderMessageContent = (message: Message) => {
-    if (message.isMarkdown && message.role === "assistant") {
+    if (message.role === "assistant") {
       return (
         <div
           className="markdown-content"
@@ -216,7 +216,6 @@ const Chat: React.FC = () => {
         />
       );
     }
-
     return <div>{message.content}</div>;
   };
 
@@ -380,13 +379,13 @@ const Chat: React.FC = () => {
   return (
     <>
       <Navbar />
-      <div className="chat-container">
+      <div className="chat-container" style={{ background: '#000', minHeight: '100vh' }}>
         <div className="main-content">
           <div className="messages-container">
             {messages.length === 0 ? (
-              <div className="empty-state">
-                <h2>Welcome to Agent K</h2>
-                <p>The supreme Kadena being</p>
+              <div className="empty-state" style={{ color: '#fff', textAlign: 'center', marginTop: '4rem' }}>
+                <h2 style={{ color: '#fff', fontWeight: 700, fontSize: '2rem', marginBottom: '0.5rem' }}>Hello! I'm Agent K</h2>
+                <p style={{ color: '#bbb', fontSize: '1.2rem', marginBottom: 0 }}>Your Kadena blockchain assistant.<br/>How can I help you today?</p>
               </div>
             ) : (
               messages.map((message, index) => (
@@ -397,6 +396,16 @@ const Chat: React.FC = () => {
                   } ${
                     error && index === messages.length - 1 ? "error-message" : ""
                   }`}
+                  style={{
+                    background: message.role === 'user' ? '#222' : '#181818',
+                    color: '#fff',
+                    borderRadius: '12px',
+                    padding: '1rem',
+                    margin: '0.5rem 0',
+                    maxWidth: '80%',
+                    alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                  }}
                 >
                   <div className="message-content">
                     {renderMessageContent(message)}
@@ -463,7 +472,7 @@ const Chat: React.FC = () => {
           )}
         </div>
 
-        <div className="input-container">
+        <div className="input-container" style={{ background: '#111' }}>
           <form onSubmit={handleSendMessage}>
             <input
               type="text"

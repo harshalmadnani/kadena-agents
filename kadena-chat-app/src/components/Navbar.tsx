@@ -46,10 +46,10 @@ const Navbar: React.FC = () => {
         </div>
       </div>
       <div className="navbar-actions">
-        <button className="agent-launcher-button" onClick={mainActionHandler}>
+        <button className="agent-launcher-button agent-launcher-button-white" onClick={mainActionHandler}>
           {mainActionLabel}
         </button>
-        <button className="agent-launcher-button" onClick={() => navigate('/terminal')}>
+        <button className="agent-launcher-button agent-launcher-button-outline" onClick={() => navigate('/terminal')}>
           Terminal
         </button>
       </div>
