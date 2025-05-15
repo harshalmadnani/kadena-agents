@@ -372,6 +372,10 @@ const Chat: React.FC = () => {
     setMessages((prev) => [...prev, cancelMessage]);
   };
 
+  const handleLaunchAgent = () => {
+    window.location.href = '/agent';
+  };
+
   return (
     <div className="chat-container">
       <div className="chat-header">
@@ -389,6 +393,9 @@ const Chat: React.FC = () => {
         <div className="header-actions">
           <button className="wallet-toggle" onClick={toggleWallet}>
             {showWallet ? "Hide Wallet" : "Show Wallet"}
+          </button>
+          <button className="agent-launcher-button" onClick={handleLaunchAgent}>
+            Launch Agent
           </button>
           <button className="logout-button" onClick={handleLogout}>
             Logout

@@ -7,6 +7,7 @@ import ChatHeader from '../ChatHeader';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import WalletInfo from '../WalletInfo';
+import Navbar from '../Navbar';
 
 const AgentLauncher = () => {
   const [currentStep, setCurrentStep] = useState(0);

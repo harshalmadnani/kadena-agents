@@ -19,6 +19,10 @@
   "homepage": "https://github.com/anshumantekriwal/kadena-agents#readme",
   "description": "",
   "dependencies": {
-    "@kadena/client": "^1.17.1"
+    "@kadena/client": "^1.17.1",
+    "@mui/icons-material": "^7.1.0",
+    "@mui/material": "^7.1.0",
+    "@supabase/supabase-js": "^2.49.4",
+    "framer-motion": "^12.11.3"
   }
 }
