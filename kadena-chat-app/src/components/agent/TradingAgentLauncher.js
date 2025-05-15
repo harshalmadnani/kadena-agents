@@ -854,7 +854,7 @@ const TradingAgentLauncher = () => {
                   >
                     Continue
                   </button>
-                ) : (currentStep > 1 && currentStep < 7 && currentStep !== 6 && !slides[currentStep].hasBehavior && !slides[currentStep].hasReview) ? (
+                ) : (currentStep > 1 && currentStep < 7 && currentStep !== 6 && !slides[currentStep].hasBehavior && !slides[currentStep].hasReview && !slides[currentStep].hasAgentLive) ? (
                   <button 
                     className="next-button"
                     onClick={handleNext}
