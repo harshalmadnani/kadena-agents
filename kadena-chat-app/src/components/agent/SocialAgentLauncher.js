@@ -456,7 +456,7 @@ const SocialAgentLauncher = () => {
           console.log('Sending posting schedule request with payload:', postingPayload);
           
           const response = await fetch(
-            'https://97m15gg62a.execute-api.ap-south-1.amazonaws.com/prod/create',
+            'https://bh0sks2jsh.execute-api.ap-south-1.amazonaws.com/prod/create',
             {
               method: 'POST',
               headers: {
