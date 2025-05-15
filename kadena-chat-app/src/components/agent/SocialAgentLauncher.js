@@ -286,21 +286,17 @@ const SocialAgentLauncher = () => {
       if (agentImage) {
         const fileExt = agentImage.name.split('.').pop();
         const filePath = `agent-images/${Date.now()}.${fileExt}`;
-        
         const { error: uploadError, data } = await supabase.storage
           .from('images')
           .upload(filePath, agentImage, {
             cacheControl: '3600',
             upsert: false
           });
-          
         if (uploadError) throw uploadError;
-        
         // Get the public URL for the uploaded image
         const { data: { publicUrl } } = supabase.storage
           .from('images')
           .getPublicUrl(filePath);
-        
         imageUrl = publicUrl;
       }
 
@@ -356,7 +352,7 @@ const SocialAgentLauncher = () => {
         return;
       }
 
-      // Insert agent data into agents2 table with model
+      // Insert agent data into agents2 table with wallet info
       const { data: agentData, error } = await supabase
         .from('agents2')
         .insert([

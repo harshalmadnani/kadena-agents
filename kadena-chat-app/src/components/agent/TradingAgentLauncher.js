@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import AgentLauncher from './AgentLauncher';
 import Navbar from '../Navbar';
+import { useAuth } from '../../context/AuthContext';
 
 const supabaseUrl = 'https://wbsnlpviggcnwqfyfobh.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indic25scHZpZ2djbndxZnlmb2JoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc2NTcwNiwiZXhwIjoyMDU0MzQxNzA2fQ.tr6PqbiAXQYSQSpG2wS6I4DZfV1Gc3dLXYhKwBrJLS0';
@@ -48,6 +49,9 @@ const TradingAgentLauncher = () => {
   const [aiRating, setAiRating] = useState(null);
   const [aiSteps, setAiSteps] = useState([]);
   const [reviewEnabled, setReviewEnabled] = useState(false);
+  const [aiJustification, setAiJustification] = useState('');
+  const [agentWalletAddress, setAgentWalletAddress] = useState('');
+  const { user } = useAuth();
 
   const slides = [
     {
@@ -209,108 +213,143 @@ const TradingAgentLauncher = () => {
     setAiSteps([]);
     setFollowUpQuestions([]);
     setReviewEnabled(false);
+    setAiJustification('');
     try {
-      // Simulate API call delay
-      await new Promise(res => setTimeout(res, 1200));
-      // Simulate AI response
-      // For demo: random rating 6-10
-      const rating = Math.floor(Math.random() * 5) + 6; // 6-10
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert trading agent evaluator. Given a user\'s description of a trading agent, return a JSON object in the format {"response":{"rating":<int 1-10>,"justification":"<short justification>","questions":[<array of follow-up questions if rating < 8, else []>]},"history":[]} with a critical, specific rating, justification, and 3-5 follow-up questions if rating < 8. Do not include anything outside the JSON.Give rating over 6 easily'
+            },
+            {
+              role: 'user',
+              content: `Evaluate this trading agent description: ${agentBehavior}`
+            }
+          ],
+          temperature: 0.2,
+        })
+      });
+      console.log('OpenAI API response:', response);
+      if (!response.ok) throw new Error('Failed to get AI rating');
+      const data = await response.json();
+      let parsed;
+      try {
+        parsed = JSON.parse(data.choices[0].message.content);
+      } catch (e) {
+        throw new Error('AI response was not valid JSON');
+      }
+      console.log('AI Justification:', parsed.response.justification);
+      const { rating, justification, questions } = parsed.response;
       setAiRating(rating);
-      if (rating < 8) {
-        // Simulate follow-up questions
-        setFollowUpQuestions([
-          "What specific trading strategies should the agent focus on?",
-          "How frequently should the agent analyze market data?",
-          "What risk management parameters should be implemented?",
-          "Should the agent focus on specific asset classes?",
-          "How should the agent handle market volatility?"
-        ]);
-        setAiSteps([]);
-        setReviewEnabled(false);
-      } else {
-        // Simulate steps
-        setAiSteps([
-          "Analyze market trends using technical indicators.",
-          "Monitor social sentiment for trading signals.",
-          "Execute trades based on predefined criteria.",
-          "Apply risk management rules to all trades.",
-          "Provide daily performance summaries."
-        ]);
-        setFollowUpQuestions([]);
-        setReviewEnabled(true);
+      setAiJustification(justification || '');
+      setFollowUpQuestions(questions || []);
+      setAiSteps([]); // Not used in this flow
+      setReviewEnabled(rating > 5); // Only enable review if rating > 7
+      if (rating > 5) {
+        localStorage.setItem('agentBehavior', agentBehavior); // Store agentBehavior
       }
     } catch (error) {
       setAiRating(null);
       setAiSteps([]);
       setFollowUpQuestions([]);
       setReviewEnabled(false);
+      setAiJustification('');
+      alert(error.message || 'Failed to get AI rating');
     } finally {
       setIsGeneratingQuestions(false);
     }
   };
 
   const handleCreateAgent = async () => {
+    console.log("handleCreateAgent called");
     setIsCreating(true);
     try {
-      // Check if bucket exists, if not create it
-      const { error: bucketError } = await supabase
-        .storage
-        .createBucket('images', {
-          public: true,
-          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif'],
-          fileSizeLimit: 1024 * 1024 * 2 // 2MB
-        });
+      // 1. Generate wallet
+      const walletRes = await fetch('https://kadena-wallet-aptx.onrender.com/generate-wallet');
+      if (!walletRes.ok) throw new Error('Failed to generate wallet');
+      const walletData = await walletRes.json();
+      const { publicKey, address } = walletData;
+      setAgentWalletAddress(address); // Store the generated wallet address
 
-      // Upload image to storage if exists
+      // 2. Upload image if present
       let imageUrl = null;
       if (agentImage) {
         const fileExt = agentImage.name.split('.').pop();
         const filePath = `agent-images/${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError, data } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('images')
           .upload(filePath, agentImage, {
             cacheControl: '3600',
             upsert: false
           });
-          
-        if (uploadError) throw uploadError;
-        
+        if (uploadError) throw new Error('Image upload failed: ' + uploadError.message);
         const { data: { publicUrl } } = supabase.storage
           .from('images')
           .getPublicUrl(filePath);
-        
         imageUrl = publicUrl;
       }
 
-      // Get current user session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
+      // 3. Get current user session
+      if (!user || !user.accountName) {
+        alert('You must be logged in to create an agent.');
+        setIsCreating(false);
+        return;
+      }
 
-      // Insert agent data into agents2 table
+      // 4. Validate required fields
+      if (!agentName.trim() || !agentBehavior.trim()) {
+        alert('Name and behavior are required.');
+        setIsCreating(false);
+        return;
+      }
+
+      // 5. Prepare insert payload
+      const payload = {
+        name: agentName,
+        description: agentDescription,
+        image: imageUrl,
+        user_id: user.accountName,
+        trading_agent: true,
+        agent_pubkey: publicKey,
+        agent_wallet: address,
+        prompt: agentBehavior
+      };
+
+      // 6. Insert into Supabase
       const { data: agentData, error } = await supabase
         .from('agents2')
-        .insert([
-          {
-            name: agentName,
-            description: agentDescription,
-            image: imageUrl,
-            user_id: session?.user?.id,
-            type: 'trading'
-          }
-        ])
+        .insert([payload])
         .select();
 
-      if (error) throw error;
-
-      if (agentData && agentData.length > 0) {
-        const agentId = agentData[0].id;
-        console.log('Trading agent created successfully:', agentId);
-        handleNext();
+      if (error) {
+        console.error('Supabase insert error:', error);
+        alert('Supabase error: ' + (error.message || JSON.stringify(error)));
+        setIsCreating(false);
+        return;
       }
+
+      if (!agentData || agentData.length === 0) {
+        alert('Agent was not created. Please check your Supabase table and policies.');
+        setIsCreating(false);
+        return;
+      }
+
+      // Success!
+      const agentId = agentData[0].id;
+      console.log('Trading agent created successfully:', agentId);
+      handleNext();
     } catch (error) {
       console.error('Error creating trading agent:', error);
-      alert(`Failed to create agent: ${error.message || 'Unknown error'}`);
+      alert('Failed to create agent: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -550,7 +589,7 @@ const TradingAgentLauncher = () => {
                           <div style={loadingAnimation} />
                         </>
                       ) : (
-                        'Continue'
+                        'Review'
                       )}
                     </button>
 
@@ -573,12 +612,17 @@ const TradingAgentLauncher = () => {
                         gap: '8px'
                       }}
                     >
-                      Review
+                      Continue
                     </button>
 
                     {aiRating !== null && (
                       <div style={{ color: 'white', marginBottom: '12px', fontSize: '16px', fontWeight: 500 }}>
                         AI Rating: <span style={{ color: aiRating >= 8 ? '#4caf50' : '#ff9800' }}>{aiRating} / 10</span>
+                        {aiJustification && (
+                          <div style={{ color: '#aaa', fontSize: '14px', marginTop: '8px', fontWeight: 400 }}>
+                            <strong>Justification:</strong> {aiJustification}
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -719,7 +763,7 @@ const TradingAgentLauncher = () => {
 
                     <button 
                       className="next-button"
-                      onClick={handleNext}
+                      onClick={handleCreateAgent}
                       disabled={isCreating}
                       style={{
                         width: '100%',
@@ -769,7 +813,8 @@ const TradingAgentLauncher = () => {
                       alt="Agent Live"
                       style={{ width: '120px', margin: '0 auto 24px', display: 'block' }}
                     />
-                    <h2 style={{ color: '#4caf50', marginBottom: '16px' ,fontSize: '12px'}}>{"Your agent wallet is: 0x926cB91d10545fD08cBFDa86127F55D70fbA05e6"}</h2>
+                    <h2 style={{ color: '#4caf50', marginBottom: '16px' ,fontSize: '12px'}}>Your agent wallet is:</h2>
+                    <div style={{ color: 'white', fontSize: '18px', marginBottom: '16px', wordBreak: 'break-all' }}>{agentWalletAddress || '...'}</div>
                     <p style={{ color: 'white', fontSize: '18px', marginBottom: '24px' }}>{slides[currentStep].content}</p>
                     <button
                       onClick={() => setShowAgentLauncher(true)}
@@ -809,7 +854,7 @@ const TradingAgentLauncher = () => {
                   >
                     Continue
                   </button>
-                ) : (currentStep > 1 && currentStep < 7 && currentStep !== 6) ? (
+                ) : (currentStep > 1 && currentStep < 7 && currentStep !== 6 && !slides[currentStep].hasBehavior && !slides[currentStep].hasReview) ? (
                   <button 
                     className="next-button"
                     onClick={handleNext}
