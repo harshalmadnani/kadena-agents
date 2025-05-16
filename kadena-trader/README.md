@@ -111,3 +111,68 @@ The API uses standard HTTP status codes:
 - 500: Internal Server Error
 
 All errors are logged to `kadena_trader.log` for debugging purposes.
+
+# Kadena Trader Lambda Function
+
+This is a Lambda function for the Kadena trading bot.
+
+## Prerequisites
+
+- Node.js 18 or higher
+- AWS CLI configured with appropriate credentials
+- AWS IAM role with Lambda execution permissions
+
+## Environment Variables
+
+The following environment variables need to be set in your Lambda configuration:
+
+- `API_KEY`: Your Kadena API key
+- `PRIVATE_KEY`: Your Kadena private key
+- `PUBLIC_KEY`: Your Kadena public key
+
+## Deployment Steps
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Create a deployment package:
+```bash
+npm run build
+```
+
+3. Deploy to AWS Lambda:
+```bash
+npm run deploy
+```
+
+## Manual Deployment
+
+If you prefer to deploy manually:
+
+1. Create a new Lambda function in AWS Console
+2. Set the runtime to Node.js 18.x
+3. Upload the `function.zip` file
+4. Configure the environment variables
+5. Set the handler to `baseline.handler`
+6. Configure the function timeout (recommended: 30 seconds)
+7. Set memory to 256MB (adjust based on your needs)
+
+## IAM Role Requirements
+
+The Lambda function needs an IAM role with the following permissions:
+
+- AWSLambdaBasicExecutionRole
+- Custom permissions for any AWS services you're using
+
+## Testing
+
+You can test the function using the AWS Lambda console or by invoking it through API Gateway if configured.
+
+## Monitoring
+
+Monitor your function using:
+- CloudWatch Logs
+- CloudWatch Metrics
+- X-Ray (if enabled)

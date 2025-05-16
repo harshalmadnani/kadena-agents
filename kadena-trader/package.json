@@ -1,26 +1,23 @@
 {
   "name": "kadena-trader",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Kadena trading bot Lambda function",
+  "main": "baseline.js",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node call.js",
-    "setup": "node setup-permissions.js",
-    "decrypt": "node test-decrypt.js"
+    "build": "zip -r function.zip . -x '*.git*'",
+    "deploy": "npm run build && aws lambda update-function-code --function-name kadena-trader --zip-file fileb://function.zip"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.806.0",
-    "@aws-sdk/client-iam": "^3.806.0",
-    "@aws-sdk/client-kms": "^3.806.0",
-    "@kadena/client": "latest",
-    "@kadena/cryptography-utils": "latest",
-    "@kadena/hd-wallet": "^0.6.1",
-    "@kadena/types": "^0.7.0",
-    "dotenv": "latest"
+    "@kadena/client": "^1.0.0",
+    "@kadena/cryptography-utils": "^1.0.0",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

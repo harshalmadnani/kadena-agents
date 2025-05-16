@@ -665,15 +665,21 @@ async function baselineFunction() {
   }
 }
 
-// Export all necessary functions
-export {
-  getBalances,
-  getKeys,
-  signTransaction,
-  submitTransaction,
-  setApiKey,
-  transfer,
-  swap,
-  quote,
-  baselineFunction,
+export const handler = async (event, context) => {
+  try {
+    const result = await baselineFunction();
+    return {
+      statusCode: 200,
+      body: JSON.stringify(result),
+    };
+  } catch (error) {
+    console.error("Lambda Handler Error:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: error.message,
+        details: error.details || {},
+      }),
+    };
+  }
 };
