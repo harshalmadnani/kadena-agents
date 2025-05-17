@@ -262,11 +262,19 @@ const TradingAgentLauncher = () => {
     console.log("handleCreateAgent called");
     setIsCreating(true);
     try {
-      // 1. Generate wallet
-      const walletRes = await fetch('https://kadena-wallet-aptx.onrender.com/generate-wallet');
+      // 1. Generate wallet (NEW ENDPOINT & PARSING)
+      const walletRes = await fetch('https://kadena-wallet-99b8.onrender.com/create-wallet');
       if (!walletRes.ok) throw new Error('Failed to generate wallet');
-      const walletData = await walletRes.json();
-      const { publicKey, address, privateKey } = walletData;
+      const walletText = await walletRes.text();
+      // Parse response like:
+      // Mnemonic: ...\nPublic Key: ...\nPrivate Key: ...
+      const mnemonicMatch = walletText.match(/Mnemonic:\s*(.*)/);
+      const publicKeyMatch = walletText.match(/Public Key:\s*(.*)/);
+      const privateKeyMatch = walletText.match(/Private Key:\s*(.*)/);
+      const mnemonic = mnemonicMatch ? mnemonicMatch[1].trim() : '';
+      const publicKey = publicKeyMatch ? publicKeyMatch[1].trim() : '';
+      const privateKey = privateKeyMatch ? privateKeyMatch[1].trim() : '';
+      const address = 'k:' + publicKey; // Use k: + publicKey as address
       setAgentWalletAddress(address); // Store the generated wallet address
 
       // 2. Upload image if present
