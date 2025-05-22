@@ -262,20 +262,24 @@ const TradingAgentLauncher = () => {
     console.log("handleCreateAgent called");
     setIsCreating(true);
     try {
-      // 1. Generate wallet (NEW ENDPOINT & PARSING)
-      const walletRes = await fetch('https://kadena-wallet-99b8.onrender.com/create-wallet');
-      if (!walletRes.ok) throw new Error('Failed to generate wallet');
-      const walletText = await walletRes.text();
-      // Parse response like:
-      // Mnemonic: ...\nPublic Key: ...\nPrivate Key: ...
-      const mnemonicMatch = walletText.match(/Mnemonic:\s*(.*)/);
-      const publicKeyMatch = walletText.match(/Public Key:\s*(.*)/);
-      const privateKeyMatch = walletText.match(/Private Key:\s*(.*)/);
-      const mnemonic = mnemonicMatch ? mnemonicMatch[1].trim() : '';
-      const publicKey = publicKeyMatch ? publicKeyMatch[1].trim() : '';
-      const privateKey = privateKeyMatch ? privateKeyMatch[1].trim() : '';
-      const address = 'k:' + publicKey; // Use k: + publicKey as address
-      setAgentWalletAddress(address); // Store the generated wallet address
+      // 1. Generate wallet
+      const walletRes = await fetch('https://kadena-wallet-1.onrender.com/api/create-wallet');
+      if (!walletRes.ok) {
+        const errorText = await walletRes.text();
+        console.error('Wallet generation failed:', errorText);
+        throw new Error('Failed to generate wallet: ' + errorText);
+      }
+      const walletData = await walletRes.json();
+      const { mnemonic, publicKey, privateKey: pkFromWallet } = walletData; // pkFromWallet to avoid conflict
+      
+      if (!mnemonic || !publicKey || !pkFromWallet) {
+        console.error('Invalid wallet data received:', walletData);
+        throw new Error('Invalid wallet data received from API');
+      }
+      console.log('Wallet generated:', { publicKey, mnemonic }); // Do not log private key
+      
+      const address = 'k:' + publicKey;
+      setAgentWalletAddress(address);
 
       // 2. Upload image if present
       let imageUrl = null;
@@ -318,7 +322,7 @@ const TradingAgentLauncher = () => {
         trading_agent: true,
         agent_pubkey: publicKey,
         agent_wallet: address,
-        agent_privatekey: privateKey,
+        agent_privatekey: pkFromWallet, // Use the renamed private key
         prompt: agentBehavior
       };
 
@@ -345,38 +349,110 @@ const TradingAgentLauncher = () => {
       const agentId = agentData[0].id;
       console.log('Trading agent created successfully:', agentId);
 
-      // Call AWS API with AI code and interval
+      // New API sequence
       if (aiCode && interval) {
+        const sanitizedAiCode = sanitizeCode(aiCode);
+        
+        // Call 1: Edit code
         try {
-          const awsPayload = {
-            code: sanitizeCode(aiCode),
-            interval: interval,
-            functionName: agentId,
-            PRIVATE_KEY: privateKey,
-            PUBLIC_KEY: publicKey
+          console.log('Calling /edit-code with:', sanitizedAiCode);
+          const editCodeRes = await fetch('https://baseline-knuv.onrender.com/edit-code', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json' // Assuming this API expects JSON
+            },
+            body: JSON.stringify({ code: sanitizedAiCode }) // Send code in a JSON object
+          });
+          if (!editCodeRes.ok) {
+            const errText = await editCodeRes.text();
+            console.error('/edit-code API error:', errText);
+            // Decide if this is a critical error or if we can proceed
+            // For now, let's log and continue, but this might need adjustment
+          } else {
+            const editCodeData = await editCodeRes.json(); // Or .text() if not JSON
+            console.log('/edit-code API response:', editCodeData);
+          }
+        } catch (editCodeError) {
+          console.error('Error calling /edit-code API:', editCodeError);
+          // Log and continue
+        }
+
+        // Call 2: Deploy to Vercel
+        let vercelDeploymentUrl = null;
+        try {
+          const vercelPayload = {
+            vercelToken: "D96yxthrWm5smqRGpNpNUZpa",
+            projectName: agentId.toString(), // Ensure agentId is a string
+            environmentVariables: {
+              API_KEY: "Commune_dev1",
+              PUBLIC_KEY: publicKey,
+              PRIVATE_KEY: pkFromWallet, // Use the renamed private key
+              PASSWORD: "anshuman"
+            }
           };
-          console.log('AWS API payload:', awsPayload);
-          const awsRes = await fetch('https://aws-api-zm6j.onrender.com/create-scheduled-lambda', {
+          console.log('Calling /deploy-vercel with payload:', vercelPayload);
+          const vercelRes = await fetch('https://baseline-knuv.onrender.com/deploy-vercel', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify(awsPayload)
+            body: JSON.stringify(vercelPayload)
           });
-          if (!awsRes.ok) {
-            const awsErrText = await awsRes.text();
-            console.error('AWS API error:', awsErrText);
-            // Optionally alert or log, but do not block user
+
+          if (!vercelRes.ok) {
+            const vercelErrText = await vercelRes.text();
+            console.error('/deploy-vercel API error:', vercelErrText);
+            // Log and continue
           } else {
-            const awsData = await awsRes.json();
-            console.log('AWS API response:', awsData);
+            const vercelData = await vercelRes.json();
+            console.log('/deploy-vercel API response:', vercelData);
+            // Extract deployment URL - need to be careful here based on actual response
+            // Assuming the URL is in `deploymentDetails.url` or the first alias
+            if (vercelData.deploymentDetails && vercelData.deploymentDetails.url) {
+              vercelDeploymentUrl = vercelData.deploymentDetails.url;
+            } else if (vercelData.deploymentDetails && vercelData.deploymentDetails.alias && vercelData.deploymentDetails.alias.length > 0) {
+              vercelDeploymentUrl = `https://${vercelData.deploymentDetails.alias[0]}`; // Prepend https if not present
+            } else {
+              console.warn('Could not determine Vercel deployment URL from response.');
+            }
+            console.log('Extracted Vercel URL:', vercelDeploymentUrl);
           }
-        } catch (awsError) {
-          console.error('Error calling AWS API:', awsError);
-          // Optionally alert or log, but do not block user
+        } catch (vercelError) {
+          console.error('Error calling /deploy-vercel API:', vercelError);
+          // Log and continue
         }
+
+        // Call 3: Trigger API (only if Vercel URL was obtained)
+        if (vercelDeploymentUrl) {
+          try {
+            const triggerPayload = {
+              interval: interval, // Interval from fetchAICodeAndInterval
+              apiUrl: vercelDeploymentUrl
+            };
+            console.log('Calling /trigger-aeod with payload:', triggerPayload);
+            const triggerRes = await fetch('https://trigger-aeod.onrender.com/schedule', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(triggerPayload)
+            });
+            if (!triggerRes.ok) {
+              const triggerErrText = await triggerRes.text();
+              console.error('/trigger-aeod API error:', triggerErrText);
+            } else {
+              const triggerData = await triggerRes.json(); // Or .text()
+              console.log('/trigger-aeod API response:', triggerData);
+            }
+          } catch (triggerError) {
+            console.error('Error calling /trigger-aeod API:', triggerError);
+          }
+        } else {
+          console.warn('Skipping /trigger-aeod API call because Vercel deployment URL was not available.');
+        }
+
       } else {
-        console.warn('AI code or interval missing, skipping AWS API call.');
+        console.warn('AI code or interval missing, skipping new API call sequence.');
       }
       handleNext();
     } catch (error) {
